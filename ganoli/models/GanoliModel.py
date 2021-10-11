@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/om2/user/rogerjin/GANOLI/ganoli')
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer, seed_everything
 import torch.nn as nn
@@ -6,6 +8,7 @@ from torch.utils.data import DataLoader
 from os.path import join as opj
 import numpy as np
 from GanoliDataset import GanoliDataset
+
 
 seed_everything(42, workers=True)
 
@@ -97,9 +100,11 @@ if __name__ == '__main__':
 
     gan = GanoliLinearGAN(7445, 3808)
 
-    trainer = Trainer()
-    train_dataset = GanoliDataset(rna_train)
-    test_dataset = GanoliDataset(rna_test)
-    train_loader = DataLoader(train_dataset)
-    test_loader = DataLoader(test_dataset)
+    trainer = Trainer(gpus=1)
+    train_rna = GanoliDataset(data['rna_train'])
+    train_atac = GanoliDataset(data['atac_train_small'])
+#     test_dataset = GanoliDataset(rna_test)
+    train_rna__loader = DataLoader(train_rna)
+    train_atac_loader = DataLoader(train_atac)
+#     test_loader = DataLoader(test_dataset)
     trainer.fit(gan, train_dataloader)
