@@ -103,6 +103,6 @@ if __name__ == '__main__':
     trainer = Trainer(gpus=1)
     train_rna = GanoliUnimodalDataset(data['rna_train'])
     train_atac = GanoliUnimodalDataset(data['atac_train_small'])
-    rna_atac = GanoliMultimodalDataset(train_rna, train_atac)
+    rna_atac = GanoliMultimodalDataset(rna=train_rna, atac=train_atac)
     train_dataloader = DataLoader(rna_atac)
     trainer.fit(gan, train_dataloader)
