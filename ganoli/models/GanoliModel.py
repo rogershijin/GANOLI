@@ -2,6 +2,7 @@ import sys
 sys.path.append('/om2/user/rogerjin/GANOLI/ganoli')
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer, seed_everything
+import torch
 import torch.nn as nn
 from torch.nn import MSELoss
 from torch.utils.data import DataLoader
@@ -42,7 +43,15 @@ class GanoliGAN(pl.LightningModule):
         loss = mse(rna_generated, rna_real) + mse(atac_generated + atac_real)
         
         return loss
-    
+
+    def configure_optimizers(self):
+        generator_rna2atac_opt = torch.optim.Adam(self.generator_rna2atac.parameters())
+        generator_atac2rna_opt = torch.optim.Adam(self.generator_atac2rna.parameters())
+        discriminator_rna_opt = torch.optim.Adam(self.discriminator_rna.parameters())
+        discriminator_atac_opt = torch.optim.Adam(self.discriminator_atac.parameters())
+
+        return generator_rna2atac_opt, generator_atac2rna_opt, discriminator_rna_opt, discriminator_atac_opt
+
 class GanoliGenerator(pl.LightningModule):
     
     def __init__(self, input_modality='atac', output_modality='rna'):
