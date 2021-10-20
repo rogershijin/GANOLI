@@ -22,7 +22,7 @@ class GanoliGAN(pl.LightningModule):
         self.generator_atac2rna = generator_atac2rna
         self.discriminator_rna = discriminator_rna
         self.discriminator_atac = discriminator_atac
-    
+
     def forward(self, rna_or_atac, data_type):
         if data_type == 'rna':
             return self.generator_rna2atac(rna_or_atac)
@@ -34,7 +34,7 @@ class GanoliGAN(pl.LightningModule):
             raise ValueError(f"Invalid datatype {data_type}, expected 'rna' or 'atac'")
             
     def training_step(self, batch, batch_idx, optimizer_idx):
-        rna_real, atac_real = batch
+        rna_real, atac_real = batch['rna'], batch['atac']
         
         rna_generated = self.generator_atac2rna(atac_real)
         atac_generated = self.generator_rna2atac(rna_real)
