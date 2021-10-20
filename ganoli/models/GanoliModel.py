@@ -7,7 +7,7 @@ from torch.nn import MSELoss
 from torch.utils.data import DataLoader
 from os.path import join as opj
 import numpy as np
-from GanoliDataset import GanoliDataset
+from GanoliDataset import GanoliUnimodalDataset, GanoliMultimodalDataset
 
 
 seed_everything(42, workers=True)
@@ -101,10 +101,8 @@ if __name__ == '__main__':
     gan = GanoliLinearGAN(7445, 3808)
 
     trainer = Trainer(gpus=1)
-    train_rna = GanoliDataset(data['rna_train'])
-    train_atac = GanoliDataset(data['atac_train_small'])
-#     test_dataset = GanoliDataset(rna_test)
-    train_rna__loader = DataLoader(train_rna)
-    train_atac_loader = DataLoader(train_atac)
-#     test_loader = DataLoader(test_dataset)
+    train_rna = GanoliUnimodalDataset(data['rna_train'])
+    train_atac = GanoliUnimodalDataset(data['atac_train_small'])
+    rna_atac = GanoliMultimodalDataset(train_rna, train_atac)
+    train_dataloader = DataLoader(rna_atac)
     trainer.fit(gan, train_dataloader)
