@@ -188,5 +188,10 @@ if __name__ == '__main__':
     train_rna = GanoliUnimodalDataset(data['rna_train'])
     train_atac = GanoliUnimodalDataset(data['atac_train_small'])
     rna_atac = GanoliMultimodalDataset(rna=train_rna, atac=train_atac)
-    train_dataloader = DataLoader(rna_atac)
+
+    def collate_fn(batch):
+        rna, atac = batch
+        return rna.float(), atac.float()
+
+    train_dataloader = DataLoader(rna_atac, collate_fn=collate_fn)
     trainer.fit(gan, train_dataloader)
