@@ -97,7 +97,7 @@ class GanoliGAN(pl.LightningModule):
 
         loss = generator_loss + discriminator_loss_real + discriminator_loss_fake
 
-        self.log('cycle_consistency_loss', loss, prog_bar=True)
+        self.log('cycle_consistency_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
 
         self.manual_backward(loss)
 
