@@ -1,0 +1,22 @@
+Identity added: /home/rogerjin/.ssh/id_rsa (/home/rogerjin/.ssh/id_rsa)
+/home/rogerjin/.bashrc: line 48: roger: command not found
+Global seed set to 42
+GPU available: True, used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Set SLURM handle signals.
+
+  | Name                  | Type                      | Params
+--------------------------------------------------------------------
+0 | generator_rna2atac    | GanoliLinearGenerator     | 28.4 M
+1 | generator_atac2rna    | GanoliLinearGenerator     | 28.4 M
+2 | discriminator_rna     | GanoliLinearDiscriminator | 7.4 K 
+3 | discriminator_atac    | GanoliLinearDiscriminator | 3.8 K 
+4 | generator_loss_fn     | MSELoss                   | 0     
+5 | discriminator_loss_fn | BCELoss                   | 0     
+--------------------------------------------------------------------
+56.7 M    Trainable params
+0         Non-trainable params
+56.7 M    Total params
+226.895   Total estimated model params size (MB)
