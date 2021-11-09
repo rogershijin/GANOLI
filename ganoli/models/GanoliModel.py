@@ -50,6 +50,9 @@ class GanoliGAN(pl.LightningModule):
         else:
             raise ValueError(f"Invalid datatype {data_type}, expected 'rna' or 'atac'")
 
+    def on_epoch_start(self):
+        print('\n')
+
 
     def training_step(self, batch, batch_idx):
 
@@ -94,9 +97,12 @@ class GanoliGAN(pl.LightningModule):
         discr_rna_fake, discr_atac_fake = self.discriminator_rna(rna_fake), self.discriminator_atac(atac_fake)
         discriminator_loss_real = self.discriminator_loss_fn(discr_rna_real, torch.ones(discr_rna_real.shape[0], 1).to(self.device)) + self.discriminator_loss_fn(discr_atac_real, torch.ones(discr_atac_real.shape[0], 1).to(self.device))
         discriminator_loss_fake = self.discriminator_loss_fn(discr_rna_fake, torch.zeros(discr_rna_fake.shape[0], 1).to(self.device)) + self.discriminator_loss_fn(discr_atac_fake, torch.zeros(discr_atac_fake.shape[0], 1).to(self.device))
+        discriminator_loss = discriminator_loss_real + discriminator_loss_fake
 
-        loss = generator_loss + discriminator_loss_real + discriminator_loss_fake
+        loss = generator_loss + discriminator_loss
 
+        self.log('generator_loss', generator_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('discriminator_loss', discriminator_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log('cycle_consistency_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
 
         self.manual_backward(loss)
@@ -104,10 +110,9 @@ class GanoliGAN(pl.LightningModule):
         for opt in self.optimizers():
             opt.step()
 
-        return loss
+        # return loss
+        return {'generator_loss': generator_loss.detach(), 'discriminator_loss': discriminator_loss.detach(), 'loss': loss.detach()}
 
-    def training_epoch_end(self, outputs):
-        print(outputs)
 
     def configure_optimizers(self):
 
@@ -197,8 +202,8 @@ if __name__ == '__main__':
     kwargs = {}
     if torch.cuda.is_available():
         kwargs['gpus'] = -1
-    
-    tb_logger = loggers.TensorBoardLogger("logs/")
+
+    tb_logger = loggers.TensorBoardLogger("test/")
 
     trainer = Trainer(**kwargs, logger=tb_logger)
     train_rna = GanoliUnimodalDataset(data['rna_train'])
