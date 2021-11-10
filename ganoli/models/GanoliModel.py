@@ -9,6 +9,7 @@ import pytorch_lightning as pl
 from pytorch_lightning import Trainer, seed_everything, loggers
 import torch
 import torch.nn as nn
+torch.autograd.set_detect_anomaly(True)
 from torch.nn import MSELoss, BCELoss
 from torch.utils.data import DataLoader
 from os.path import join as opj
@@ -22,7 +23,7 @@ class GanoliGAN(pl.LightningModule):
 
     def __init__(self, generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac):
         super().__init__()
-        self.automatic_optimization = False
+        # self.automatic_optimization = False
 
         self.generator_rna2atac = generator_rna2atac
         self.generator_atac2rna = generator_atac2rna
@@ -31,8 +32,9 @@ class GanoliGAN(pl.LightningModule):
         self.supervised = False
 
         self.reconstruction_loss_fn = MSELoss()
-        self.discriminator_loss_fn = BCELoss()
+        self.identity_loss_fn = MSELoss()
         self.generator_loss_fn = BCELoss()
+        self.discriminator_loss_fn = BCELoss()
 
     def supervise(self):
         self.supervised = True
@@ -43,8 +45,11 @@ class GanoliGAN(pl.LightningModule):
     def reconstruction_loss(self, pred, target):
         return self.reconstruction_loss_fn(pred, target)
 
+    def identity_loss(self, pred, target):
+        return self.identity_loss_fn(pred, target)
+
     def generator_loss(self, fake_preds):
-        return self.generator_loss_fn(fake_preds, torch.ones(fake_preds.shape[0], 1))
+        return self.generator_loss_fn(fake_preds, torch.ones(fake_preds.shape[0], 1).to(self.device))
 
     def discriminator_loss(self, real_preds, fake_preds):
         discriminator_loss_real = self.discriminator_loss_fn(real_preds, torch.ones(real_preds.shape[0], 1).to(self.device))
@@ -65,17 +70,16 @@ class GanoliGAN(pl.LightningModule):
         print('\n')
 
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, optimizer_idx):
 
         if self.supervised:
             return self.supervised_training_step(batch, batch_idx)
 
         else:
-            return self.unsupervised_training_step(batch, batch_idx)
+            return self.unsupervised_training_step(batch, batch_idx, optimizer_idx)
 
 
     def supervised_training_step(self, batch, batch_idx):
-
 
         rna_real, atac_real = batch['rna'].float(), batch['atac'].float()
 
@@ -94,56 +98,61 @@ class GanoliGAN(pl.LightningModule):
 
         return loss
 
-    def unsupervised_training_step(self, batch, batch_idx):
-
-        generator_rna2atac_opt, generator_atac2rna_opt, discriminator_rna_opt, discriminator_atac_opt = self.optimizers()
-        gen_opts = [generator_rna2atac_opt, generator_atac2rna_opt]
-        discr_opts = [discriminator_rna_opt, discriminator_atac_opt]
+    def unsupervised_training_step(self, batch, batch_idx, optimizer_idx):
 
         rna_real, atac_real = batch['rna'].float(), batch['atac'].float()
-        atac_real = atac_real.float()
         rna_fake, atac_fake = self.generator_atac2rna(atac_real), self.generator_rna2atac(rna_real)
-        rna_recon, atac_recon = self.generator_atac2rna(atac_fake), self.generator_rna2atac(rna_real)
 
-        rna_recon_loss = self.reconstruction_loss(rna_real, rna_recon)
-        atac_recon_loss = self.reconstruction_loss(atac_real, atac_recon)
-        total_recon_loss = rna_recon_loss + atac_recon_loss
+        if optimizer_idx in [0,1]: # generator
 
-        discr_rna_real, discr_atac_real = self.discriminator_rna(rna_real), self.discriminator_atac(atac_real)
-        discr_rna_fake, discr_atac_fake = self.discriminator_rna(rna_fake), self.discriminator_atac(atac_fake)
-        rna_discr_loss = self.discriminator_loss(discr_rna_real, discr_rna_fake)
-        atac_discr_loss = self.discriminator_loss(discr_atac_real, discr_atac_fake)
-        total_discr_loss = rna_discr_loss, atac_discr_loss
+            rna_recon, atac_recon = self.generator_atac2rna(atac_fake), self.generator_rna2atac(rna_real)
 
-        atac2rna_gen_loss = self.generator_loss(discr_rna_fake)
-        rna2atac_gen_loss = self.generator_loss(discr_atac_fake)
-        total_gen_loss = atac2rna_gen_loss + rna2atac_gen_loss
+            rna_recon_loss = self.reconstruction_loss(rna_real, rna_recon)
+            atac_recon_loss = self.reconstruction_loss(atac_real, atac_recon)
+            total_recon_loss = rna_recon_loss + atac_recon_loss
 
-        for discr_opt in discr_opts:
-            discr_opt.zero_grad()
-            self.manual_backward(total_discr_loss)
-            discr_opt.step()
+            self.log('loss/recon_rna', rna_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/recon_atac', atac_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/recon_total', total_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        for gen_opt in gen_opts:
-            gen_opt.zero_grad()
-            self.manual_backward(total_gen_loss + total_recon_loss)
-            gen_opt.step()
+            # todo: think about identity loss - not easy because atac/rna come in different sizes.
 
-        loss = total_recon_loss + total_discr_loss + total_gen_loss
+            # rna_id, atac_id = self.generator_atac2rna(rna_real), self.generator_rna2atac(atac_real)
 
-        self.log('loss/rna_recon_loss', rna_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('loss/atac2rna_generator_loss', atac2rna_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('loss/rna_discriminator_loss', rna_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            # rna_id_loss = self.identity_loss(rna_id, rna_real)
+            # atac_id_loss = self.identity_loss(atac_id, atac_real)
+            # total_id_loss = rna_id_loss + atac_id_loss
 
-        self.log('atac_recon_loss', atac_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('rna2atac_generator_loss', rna2atac_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('atac_discriminator_loss', atac_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            # self.log('loss/id_rna', rna_id_loss, on_step=False, on_epoch=True, prog_bar=True)
+            # self.log('loss/id_atac', atac_id_loss, on_step=False, on_epoch=True, prog_bar=True)
+            # self.log('loss/id_total', total_id_loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        self.log('recon_loss', total_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('generator_loss', total_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('discriminator_loss', total_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            discr_rna_fake, discr_atac_fake = self.discriminator_rna(rna_fake), self.discriminator_atac(atac_fake)
 
-        self.log('total_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+            atac2rna_gen_loss = self.generator_loss(discr_rna_fake)
+            rna2atac_gen_loss = self.generator_loss(discr_atac_fake)
+            total_gen_loss = atac2rna_gen_loss + rna2atac_gen_loss
+
+            self.log('loss/atac2rna_generator_loss', atac2rna_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/rna2atac_generator_loss', rna2atac_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/total_generator_loss', total_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+
+            # return total_recon_loss + total_id_loss + total_gen_loss
+            return total_recon_loss + total_gen_loss
+
+        elif optimizer_idx in [2,3]: # discriminator
+            discr_rna_real, discr_atac_real = self.discriminator_rna(rna_real), self.discriminator_atac(atac_real)
+            discr_rna_fake, discr_atac_fake = self.discriminator_rna(rna_fake), self.discriminator_atac(atac_fake)
+
+            rna_discr_loss = self.discriminator_loss(discr_rna_real, discr_rna_fake)
+            atac_discr_loss = self.discriminator_loss(discr_atac_real, discr_atac_fake)
+            total_discr_loss = rna_discr_loss + atac_discr_loss
+
+            self.log('loss/rna_discriminator_loss', rna_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/atac_discriminator_loss', atac_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/total_discriminator_loss', total_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+
+            return total_discr_loss
 
 
     def configure_optimizers(self):
@@ -235,7 +244,7 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         kwargs['gpus'] = -1
 
-    tb_logger = loggers.TensorBoardLogger("test/")
+    tb_logger = loggers.TensorBoardLogger("linear/")
 
     trainer = Trainer(**kwargs, logger=tb_logger)
     train_rna = GanoliUnimodalDataset(data['rna_train'])

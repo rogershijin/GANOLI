@@ -1,4 +1,5 @@
 lightning_logs/
 logs/
 test/
-scratch*
+linear/
+.ipynb_checkpoints/
