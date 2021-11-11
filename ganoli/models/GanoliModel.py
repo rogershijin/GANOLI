@@ -285,13 +285,14 @@ if __name__ == '__main__':
     data_path = opj(data_root, 'data_files_new.npz')
     data = np.load(data_path)
 
-    gan = GanoliLinearGAN(7445, 3808)
+    # gan = GanoliLinearGAN(7445, 3808)
+    gan = GanoliShallowGAN(7445, 3808)
 
     kwargs = {}
     if torch.cuda.is_available():
         kwargs['gpus'] = -1
 
-    tb_logger = loggers.TensorBoardLogger("oracle/")
+    tb_logger = loggers.TensorBoardLogger("logs/shallow/")
 
     trainer = Trainer(**kwargs, logger=tb_logger)
     train_rna = GanoliUnimodalDataset(data['rna_train'])
