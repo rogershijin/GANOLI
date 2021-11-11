@@ -311,14 +311,14 @@ if __name__ == '__main__':
     data_path = opj(data_root, 'data_files_new.npz')
     data = np.load(data_path)
 
-    gan = GanoliLinearGAN(7445, 3808)
-    # gan = GanoliShallowGAN(7445, 3808)
+    # gan = GanoliLinearGAN(7445, 3808)
+    gan = GanoliShallowGAN(7445, 3808)
 
     kwargs = {}
     if torch.cuda.is_available():
         kwargs['gpus'] = -1
 
-    tb_logger = loggers.TensorBoardLogger("logs/linear/")
+    tb_logger = loggers.TensorBoardLogger("logs/debug/")
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
                                    filename='epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
                                    save_top_k=10, auto_insert_metric_name=False)
