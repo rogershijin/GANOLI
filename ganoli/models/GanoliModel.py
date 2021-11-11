@@ -140,9 +140,9 @@ class GanoliGAN(pl.LightningModule):
             rna_oracle_recon_loss = self.reconstruction_loss(rna_fake, rna_real)
             atac_oracle_recon_loss = self.reconstruction_loss(atac_fake, atac_real)
             total_oracle_recon_loss = rna_oracle_recon_loss + atac_oracle_recon_loss
-            self.log('loss/oracle_rna', atac2rna_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/oracle_atac', rna2atac_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/oracle_total', total_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/oracle_rna', rna_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/oracle_atac', atac_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/oracle_total', total_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
 
             # return total_recon_loss + total_id_loss + total_gen_loss
             return total_recon_loss + total_gen_loss
@@ -251,7 +251,7 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         kwargs['gpus'] = -1
 
-    tb_logger = loggers.TensorBoardLogger("linear/")
+    tb_logger = loggers.TensorBoardLogger("oracle/")
 
     trainer = Trainer(**kwargs, logger=tb_logger)
     train_rna = GanoliUnimodalDataset(data['rna_train'])
