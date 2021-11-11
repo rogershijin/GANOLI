@@ -329,15 +329,15 @@ if __name__ == '__main__':
 
     def self_correlation(matrix, device='cuda:0'):
         matrix = torch.Tensor(matrix).to(device)
-        return matrix.T @ matrix
+        return (matrix.T @ matrix).cpu().numpy()
 
     def embed(inp, embedding, device='cuda:0'):
-        inp = inp.Tensor(inp).to(device)
-        embedding = inp.Tensor(embedding).to(device)
+        inp = torch.Tensor(inp).to(device)
+        embedding = torch.Tensor(embedding).to(device)
         return (inp @ embedding).cpu().numpy()
 
     rna_embeddings = self_correlation(train_rna)
-    atac_embeddings = self_correlatioun(train_atac)
+    atac_embeddings = self_correlation(train_atac)
     train_rna_embed = embed(train_rna, rna_embeddings)
     train_atac_embed = embed(train_rna, atac_embeddings)
     val_rna_embed = embed(val_rna, rna_embeddings)
