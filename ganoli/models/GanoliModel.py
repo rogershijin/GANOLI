@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 from os.path import join as opj
 import numpy as np
 from GanoliDataset import GanoliUnimodalDataset, GanoliMultimodalDataset
+import pandas as pd
 
 seed_everything(42, workers=True)
 
@@ -205,8 +206,10 @@ class GanoliGAN(pl.LightningModule):
 
 class GanoliGenerator(pl.LightningModule):
 
-    def __init__(self, input_modality='atac', output_modality='rna', embedding=None):
+    def __init__(self, input_modality='atac', output_modality='rna', embedding=None, embedding_labels=None):
         super().__init__()
+
+        self.tensorboard = self.logger.experiment
 
         self.model = None
         self.input_modality = input_modality
@@ -214,6 +217,8 @@ class GanoliGenerator(pl.LightningModule):
         self.embedding=embedding
         if self.embedding is not None:
             self.embedding.to(self.device)
+            if embedding_labels is not None:
+                self.tensorboard.add_embedding(embedding, metadata=embedding_labels, tag=f'generator_{self.input_modality}_embedding')
 
     def forward(self, inp):
         if self.embedding is not None:
@@ -226,7 +231,7 @@ class GanoliGenerator(pl.LightningModule):
 
 class GanoliDiscriminator(pl.LightningModule):
 
-    def __init__(self, input_modality='atac', embedding=None):
+    def __init__(self, input_modality='atac', embedding=None, embedding_labels=None):
         super().__init__()
 
         self.model = None
@@ -234,6 +239,8 @@ class GanoliDiscriminator(pl.LightningModule):
         self.embedding=embedding
         if self.embedding is not None:
             self.embedding.to(self.device)
+            if embedding_labels is not None:
+                self.tensorboard.add_embedding(embedding, metadata=embedding_labels, tag=f'discriminator_{self.input_modality}_embedding')
 
     def forward(self, inp):
         if self.embedding is not None:
@@ -301,23 +308,43 @@ class GanoliShallowDiscriminator(GanoliDiscriminator):
 
         self.model = model
 
-
 class GanoliShallowGAN(GanoliGAN):
-    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True, rna_embedding=None, atac_embedding=None):
+    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True, rna_embedding=None, atac_embedding=None, rna_embedding_labels=None):
         generator_rna2atac = GanoliShallowGenerator(rna_shape, atac_shape, input_modality='rna', hidden_dim=hidden_dim,
-                                                    bias=bias, embedding=rna_embedding)
+                                                    bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
         generator_atac2rna = GanoliShallowGenerator(atac_shape, rna_shape, input_modality='atac', hidden_dim=hidden_dim,
                                                     bias=bias, embedding=atac_embedding)
         discriminator_rna = GanoliShallowDiscriminator(rna_shape, input_modality='rna', hidden_dim=hidden_dim,
-                                                       bias=bias, embedding=rna_embedding)
+                                                       bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
         discriminator_atac = GanoliShallowDiscriminator(atac_shape, input_modality='atac', hidden_dim=hidden_dim,
                                                         bias=bias, embedding=atac_embedding)
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
+
+class GanoliMLPGenerator(GanoliGAN):
+
+    def __init__(self, input_shape, output_shape, input_modality='atac', hidden_dims=[], bias=True, **kwargs):
+        super().__init__(input_modality=input_modality, **kwargs)
+        self.leaky_relu = nn.LeakyReLU()
+        layer_shapes = [input_shape, *hidden_dims, output_shape]
+        self.layers = [nn.Linear(layer_shapes[i], layer_shapes[i+1], bias=bias) for i in range(len(hidden_dims+1))]
+
+        def model(x):
+            for layer in self.layers:
+                x = layer(x)
+                x = self.leaky_relu(x)
+            return x # todo: think about tanh in generator
+
+        self.model = model
+
 
 if __name__ == '__main__':
     data_root = '/om2/user/rogerjin/data'
     data_path = opj(data_root, 'data_files_new.npz')
     data = np.load(data_path)
+
+    gene_list = pd.read_csv(f'{data_root}/gene_list.csv', header=None)
+    chosen_genes = gene_list[data['rna_good_feats']]
+    gene_labels = list(chosen_genes[1])
 
     kwargs = {}
     if torch.cuda.is_available():
@@ -362,6 +389,6 @@ if __name__ == '__main__':
     # gan = GanoliLinearGAN(7445, 3808)
     # gan = GanoliShallowGAN(7445, 3808)
     # gan = GanoliLinearGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
-    gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
+    gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding, rna_embedding_labels=gene_labels)
 
     trainer.fit(gan, train_dataloader, val_dataloader)
