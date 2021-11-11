@@ -319,7 +319,7 @@ if __name__ == '__main__':
 
     val_rna = GanoliUnimodalDataset(data['rna_test'])
     val_atac = GanoliUnimodalDataset(data['atac_test_small'])
-    val_rna_atac = GanoliMultimodalDataset(rna=test_rna, atac=test_atac)
+    val_rna_atac = GanoliMultimodalDataset(rna=val_rna, atac=val_atac)
 
     train_dataloader = DataLoader(train_rna_atac, batch_size=32, num_workers=4)
     val_dataloader = DataLoader(val_rna_atac, batch_size=32, num_workers=4)
