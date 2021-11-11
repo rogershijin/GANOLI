@@ -323,7 +323,7 @@ if __name__ == '__main__':
                                    filename='epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
                                    save_top_k=10, auto_insert_metric_name=False)
 
-    trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer])
+    trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer], check_val_every_n_epoch=3)
     train_rna = GanoliUnimodalDataset(data['rna_train'])
     train_atac = GanoliUnimodalDataset(data['atac_train_small'])
     train_rna_atac = GanoliMultimodalDataset(rna=train_rna, atac=train_atac)
