@@ -3,6 +3,7 @@ import sys
 sys.path.append('/om2/user/rogerjin/GANOLI/ganoli')
 
 from IPython.core import ultratb
+
 sys.excepthook = ultratb.FormattedTB(mode='Verbose', color_scheme='Linux', call_pdb=False)
 
 import pytorch_lightning as pl
@@ -10,6 +11,7 @@ from pytorch_lightning import Trainer, seed_everything, loggers
 from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
 import torch.nn as nn
+
 torch.autograd.set_detect_anomaly(True)
 from torch.nn import MSELoss, BCELoss
 from torch.utils.data import DataLoader
@@ -53,8 +55,10 @@ class GanoliGAN(pl.LightningModule):
         return self.generator_loss_fn(fake_preds, torch.ones(fake_preds.shape[0], 1).to(self.device))
 
     def discriminator_loss(self, real_preds, fake_preds):
-        discriminator_loss_real = self.discriminator_loss_fn(real_preds, torch.ones(real_preds.shape[0], 1).to(self.device))
-        discriminator_loss_fake = self.discriminator_loss_fn(fake_preds, torch.zeros(fake_preds.shape[0], 1).to(self.device))
+        discriminator_loss_real = self.discriminator_loss_fn(real_preds,
+                                                             torch.ones(real_preds.shape[0], 1).to(self.device))
+        discriminator_loss_fake = self.discriminator_loss_fn(fake_preds,
+                                                             torch.zeros(fake_preds.shape[0], 1).to(self.device))
         return discriminator_loss_real + discriminator_loss_fake
 
     def forward(self, rna_or_atac, data_type):
@@ -70,7 +74,6 @@ class GanoliGAN(pl.LightningModule):
     def on_epoch_start(self):
         print('\n')
 
-
     def training_step(self, batch, batch_idx, optimizer_idx):
 
         if self.supervised:
@@ -78,7 +81,6 @@ class GanoliGAN(pl.LightningModule):
 
         else:
             return self.unsupervised_training_step(batch, batch_idx, optimizer_idx)
-
 
     def supervised_training_step(self, batch, batch_idx):
 
@@ -104,9 +106,9 @@ class GanoliGAN(pl.LightningModule):
         rna_real, atac_real = batch['rna'].float(), batch['atac'].float()
         rna_fake, atac_fake = self.generator_atac2rna(atac_real), self.generator_rna2atac(rna_real)
 
-        if optimizer_idx in [0,1]: # generator
+        if optimizer_idx in [0, 1]:  # generator
 
-            rna_recon, atac_recon = self.generator_atac2rna(atac_fake), self.generator_rna2atac(rna_real)
+            rna_recon, atac_recon = self.generator_atac2rna(atac_fake), self.generator_rna2atac(rna_fake)
 
             rna_recon_loss = self.reconstruction_loss(rna_real, rna_recon)
             atac_recon_loss = self.reconstruction_loss(atac_real, atac_recon)
@@ -151,7 +153,7 @@ class GanoliGAN(pl.LightningModule):
             # return total_recon_loss + total_id_loss + total_gen_loss
             return total_recon_loss + total_gen_loss
 
-        elif optimizer_idx in [2,3]: # discriminator
+        elif optimizer_idx in [2, 3]:  # discriminator
             discr_rna_real, discr_atac_real = self.discriminator_rna(rna_real), self.discriminator_atac(atac_real)
             discr_rna_fake, discr_atac_fake = self.discriminator_rna(rna_fake), self.discriminator_atac(atac_fake)
 
@@ -164,7 +166,6 @@ class GanoliGAN(pl.LightningModule):
             self.log('loss/discr_total', total_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
 
             return total_discr_loss
-
 
     def configure_optimizers(self):
 
@@ -194,10 +195,8 @@ class GanoliGenerator(pl.LightningModule):
         self.input_modality = input_modality
         self.output_modality = output_modality
 
-
     def forward(self, inp):
         return self.model(inp)
-
 
     def __str__(self):
         return f'Generator {self.input_modality} --> {self.output_modality}'
@@ -211,7 +210,6 @@ class GanoliDiscriminator(pl.LightningModule):
         self.model = None
         self.sigmoid = nn.Sigmoid()
         self.input_modality = input_modality
-
 
     def forward(self, inp):
         x = self.model(inp)
@@ -243,12 +241,13 @@ class GanoliLinearGAN(GanoliGAN):
         discriminator_atac = GanoliLinearDiscriminator(atac_shape, input_modality='atac')
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
 
+
 class GanoliShallowGenerator(GanoliGenerator):
 
     def __init__(self, input_shape, output_shape, input_modality='atac', hidden_dim=500, bias=True):
         super().__init__(input_modality=input_modality)
-        self.linear1 = nn.Linear(input_shape, hidden_dim,bias=bias)
-        self.leaky_relu  = nn.LeakyReLU()
+        self.linear1 = nn.Linear(input_shape, hidden_dim, bias=bias)
+        self.leaky_relu = nn.LeakyReLU()
         self.linear2 = nn.Linear(hidden_dim, output_shape, bias=bias)
 
         def model(x):
@@ -259,12 +258,13 @@ class GanoliShallowGenerator(GanoliGenerator):
 
         self.model = model
 
+
 class GanoliShallowDiscriminator(GanoliDiscriminator):
     def __init__(self, input_shape, input_modality='atac', hidden_dim=500, bias=True):
         super().__init__(input_modality=input_modality)
 
-        self.linear1 = nn.Linear(input_shape, hidden_dim,bias=bias)
-        self.leaky_relu  = nn.LeakyReLU()
+        self.linear1 = nn.Linear(input_shape, hidden_dim, bias=bias)
+        self.leaky_relu = nn.LeakyReLU()
         self.linear2 = nn.Linear(hidden_dim, 1, bias=bias)
 
         def model(x):
@@ -275,13 +275,19 @@ class GanoliShallowDiscriminator(GanoliDiscriminator):
 
         self.model = model
 
+
 class GanoliShallowGAN(GanoliGAN):
     def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True):
-        generator_rna2atac = GanoliShallowGenerator(rna_shape, atac_shape, input_modality='rna', hidden_dim=hidden_dim, bias=bias)
-        generator_atac2rna = GanoliShallowGenerator(atac_shape, rna_shape, input_modality='atac', hidden_dim=hidden_dim, bias=bias)
-        discriminator_rna = GanoliShallowDiscriminator(rna_shape, input_modality='rna', hidden_dim=hidden_dim, bias=bias)
-        discriminator_atac = GanoliShallowDiscriminator(atac_shape, input_modality='atac', hidden_dim=hidden_dim, bias=bias)
+        generator_rna2atac = GanoliShallowGenerator(rna_shape, atac_shape, input_modality='rna', hidden_dim=hidden_dim,
+                                                    bias=bias)
+        generator_atac2rna = GanoliShallowGenerator(atac_shape, rna_shape, input_modality='atac', hidden_dim=hidden_dim,
+                                                    bias=bias)
+        discriminator_rna = GanoliShallowDiscriminator(rna_shape, input_modality='rna', hidden_dim=hidden_dim,
+                                                       bias=bias)
+        discriminator_atac = GanoliShallowDiscriminator(atac_shape, input_modality='atac', hidden_dim=hidden_dim,
+                                                        bias=bias)
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
+
 
 if __name__ == '__main__':
     data_root = '/om2/user/rogerjin/data'
@@ -296,7 +302,9 @@ if __name__ == '__main__':
         kwargs['gpus'] = -1
 
     tb_logger = loggers.TensorBoardLogger("logs/debug/")
-    checkpointer = ModelCheckpoint(monitor='checkpointer_objective', filename='epoch={epoch:02d}-oracle_total={checkpointer_objective:.2f}', save_top_k=10, auto_insert_metric_name=False)
+    checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
+                                   filename='epoch={epoch:02d}-oracle_total={checkpointer_objective:.2f}',
+                                   save_top_k=10, auto_insert_metric_name=False)
 
     trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer])
     train_rna = GanoliUnimodalDataset(data['rna_train'])
