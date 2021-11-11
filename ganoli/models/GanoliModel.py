@@ -324,8 +324,10 @@ if __name__ == '__main__':
         kwargs['gpus'] = -1
 
     tb_logger = loggers.TensorBoardLogger("logs/debug/")
-    # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr/")
+    # tb_logger = loggers.TensorBoardLogger("logs/linear")
+    # tb_logger = loggers.TensorBoardLogger("logs/shallow/")
     # tb_logger = loggers.TensorBoardLogger("logs/linear_embed_corr/")
+    # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr/")
 
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
                                    filename='epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
@@ -359,7 +361,7 @@ if __name__ == '__main__':
 
     # gan = GanoliLinearGAN(7445, 3808)
     # gan = GanoliShallowGAN(7445, 3808)
-    gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
     # gan = GanoliLinearGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
+    gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
 
     trainer.fit(gan, train_dataloader, val_dataloader)
