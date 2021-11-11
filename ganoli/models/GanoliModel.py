@@ -316,6 +316,9 @@ if __name__ == '__main__':
         kwargs['gpus'] = -1
 
     tb_logger = loggers.TensorBoardLogger("logs/debug/")
+    # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr/")
+    # tb_logger = loggers.TensorBoardLogger("logs/linear_embed_corr/")
+
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
                                    filename='epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
                                    save_top_k=10, auto_insert_metric_name=False)
