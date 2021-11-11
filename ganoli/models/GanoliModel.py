@@ -296,7 +296,7 @@ if __name__ == '__main__':
         kwargs['gpus'] = -1
 
     tb_logger = loggers.TensorBoardLogger("logs/debug/")
-    checkpointer = ModelCheckpoint(monitor='checkpointer_objective', save_top_k=10)
+    checkpointer = ModelCheckpoint(monitor='checkpointer_objective', filename='epoch={epoch:02d}-oracle_total={checkpointer_objective:.2f}', save_top_k=10, auto_insert_metric_name=False)
 
     trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer])
     train_rna = GanoliUnimodalDataset(data['rna_train'])
