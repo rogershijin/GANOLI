@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=linear
+#SBATCH --job-name=training
 #SBATCH --output=test/sbatch/linear.out
 #SBATCH --error=test/sbatch/linear.error
 #SBATCH --mem=32000
