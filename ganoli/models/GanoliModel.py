@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 
 torch.autograd.set_detect_anomaly(True)
-from torch.nn import MSELoss, BCELoss
+from torch.nn import MSELoss, BCEWithLogitsLoss
 from torch.utils.data import DataLoader
 from os.path import join as opj
 import numpy as np
@@ -36,8 +36,8 @@ class GanoliGAN(pl.LightningModule):
 
         self.reconstruction_loss_fn = MSELoss()
         self.identity_loss_fn = MSELoss()
-        self.generator_loss_fn = BCELoss()
-        self.discriminator_loss_fn = BCELoss()
+        self.generator_loss_fn = BCEWithLogitsLoss()
+        self.discriminator_loss_fn = BCEWithLogitsLoss()
 
     def supervise(self):
         self.supervised = True
