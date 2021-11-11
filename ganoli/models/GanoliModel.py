@@ -175,7 +175,7 @@ class GanoliGAN(pl.LightningModule):
             if data_partition == 'train':
                 return total_discr_loss
 
-        return total_recon_loss + total_gen_los + total_discr_loss
+        return total_recon_loss + total_gen_loss + total_discr_loss
 
     def configure_optimizers(self):
 
