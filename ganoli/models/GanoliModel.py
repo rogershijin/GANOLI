@@ -140,9 +140,10 @@ class GanoliGAN(pl.LightningModule):
             rna_oracle_recon_loss = self.reconstruction_loss(rna_fake, rna_real)
             atac_oracle_recon_loss = self.reconstruction_loss(atac_fake, atac_real)
             total_oracle_recon_loss = rna_oracle_recon_loss + atac_oracle_recon_loss
-            self.log('loss/oracle_rna', rna_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/oracle_atac', atac_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/oracle_total', total_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+
+            self.log('oracle/oracle_rna', rna_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('oracle/oracle_atac', atac_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('oracle/oracle_total', total_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
 
             # return total_recon_loss + total_id_loss + total_gen_loss
             return total_recon_loss + total_gen_loss
@@ -239,6 +240,45 @@ class GanoliLinearGAN(GanoliGAN):
         discriminator_atac = GanoliLinearDiscriminator(atac_shape, input_modality='atac')
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
 
+class GanoliShallowGenerator(GanoliGenerator):
+
+    def __init__(self, input_shape, output_shape, input_modality='atac', hidden_dim=500, bias=True):
+        super().__init__(input_modality=input_modality)
+        self.linear1 = nn.Linear(input_shape, hidden_dim,bias=bias)
+        self.leaky_relu  = nn.LeakyReLU()
+        self.linear2 = nn.Linear(hidden_dim, output_shape, bias=bias)
+
+        def model(x):
+            x = self.linear1(x)
+            x = self.leaky_relu(x)
+            x = self.linear2(x)
+            return x
+
+        self.model = model
+
+class GanoliShallowDiscriminator(GanoliDiscriminator):
+    def __init__(self, input_shape, input_modality='atac', hidden_dim=500, bias=True):
+        super().__init__(input_modality=input_modality)
+
+        self.linear1 = nn.Linear(input_shape, hidden_dim,bias=bias)
+        self.leaky_relu  = nn.LeakyReLU()
+        self.linear2 = nn.Linear(hidden_dim, 1, bias=bias)
+
+        def model(x):
+            x = self.linear1(x)
+            x = self.leaky_relu(x)
+            x = self.linear2(x)
+            return x
+
+        self.model = model
+
+class GanoliShallowGAN(GanoliGAN):
+    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True):
+        generator_rna2atac = GanoliShallowGenerator(rna_shape, atac_shape, input_modality='rna', hidden_dim=hidden_dim, bias=bias)
+        generator_atac2rna = GanoliShallowGenerator(atac_shape, rna_shape, input_modality='atac', hidden_dim=hidden_dim, bias=bias)
+        discriminator_rna = GanoliShallowDiscriminator(rna_shape, input_modality='rna', hidden_dim=hidden_dim, bias=bias)
+        discriminator_atac = GanoliShallowDiscriminator(atac_shape, input_modality='atac', hidden_dim=hidden_dim, bias=bias)
+        super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
 
 if __name__ == '__main__':
     data_root = '/om2/user/rogerjin/data'
