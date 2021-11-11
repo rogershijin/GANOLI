@@ -295,7 +295,7 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         kwargs['gpus'] = -1
 
-    tb_logger = loggers.TensorBoardLogger("logs/shallow/")
+    tb_logger = loggers.TensorBoardLogger("logs/debug/")
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective', save_top_k=10)
 
     trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer])
