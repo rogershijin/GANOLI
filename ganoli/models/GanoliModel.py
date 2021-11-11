@@ -205,14 +205,19 @@ class GanoliGAN(pl.LightningModule):
 
 class GanoliGenerator(pl.LightningModule):
 
-    def __init__(self, input_modality='atac', output_modality='rna'):
+    def __init__(self, input_modality='atac', output_modality='rna', embedding=None):
         super().__init__()
 
         self.model = None
         self.input_modality = input_modality
         self.output_modality = output_modality
+        self.embedding=embedding
+        if self.embedding is not None:
+            self.embedding.to(self.device)
 
     def forward(self, inp):
+        if self.embedding is not None:
+            inp = inp @ self.embedding
         return self.model(inp)
 
     def __str__(self):
@@ -221,48 +226,52 @@ class GanoliGenerator(pl.LightningModule):
 
 class GanoliDiscriminator(pl.LightningModule):
 
-    def __init__(self, input_modality='atac'):
+    def __init__(self, input_modality='atac', embedding=None):
         super().__init__()
 
         self.model = None
-        self.sigmoid = nn.Sigmoid()
         self.input_modality = input_modality
+        self.embedding=embedding
+        if self.embedding is not None:
+            self.embedding.to(self.device)
 
     def forward(self, inp):
+        if self.embedding is not None:
+            inp = inp @ self.embedding
         x = self.model(inp)
-        return self.sigmoid(x)
+        return x
 
 
 class GanoliLinearGenerator(GanoliGenerator):
 
-    def __init__(self, input_shape, output_shape, input_modality='atac', bias=True):
-        super().__init__(input_modality=input_modality)
+    def __init__(self, input_shape, output_shape, input_modality='atac', bias=True, **kwargs):
+        super().__init__(input_modality=input_modality, **kwargs)
 
         self.model = nn.Linear(input_shape, output_shape, bias=bias)
 
 
 class GanoliLinearDiscriminator(GanoliDiscriminator):
 
-    def __init__(self, input_shape, input_modality='atac', bias=True):
-        super().__init__(input_modality=input_modality)
+    def __init__(self, input_shape, input_modality='atac', bias=True, **kwargs):
+        super().__init__(input_modality=input_modality, **kwargs)
 
         self.model = nn.Linear(input_shape, 1, bias=bias)
 
 
 class GanoliLinearGAN(GanoliGAN):
 
-    def __init__(self, rna_shape, atac_shape, bias=True):
-        generator_rna2atac = GanoliLinearGenerator(rna_shape, atac_shape, input_modality='rna')
-        generator_atac2rna = GanoliLinearGenerator(atac_shape, rna_shape, input_modality='atac')
-        discriminator_rna = GanoliLinearDiscriminator(rna_shape, input_modality='rna')
-        discriminator_atac = GanoliLinearDiscriminator(atac_shape, input_modality='atac')
+    def __init__(self, rna_shape, atac_shape, bias=True, rna_embedding=None, atac_embedding=None):
+        generator_rna2atac = GanoliLinearGenerator(rna_shape, atac_shape, input_modality='rna', embedding=rna_embedding)
+        generator_atac2rna = GanoliLinearGenerator(atac_shape, rna_shape, input_modality='atac', embedding=atac_embedding)
+        discriminator_rna = GanoliLinearDiscriminator(rna_shape, input_modality='rna', embedding=rna_embedding)
+        discriminator_atac = GanoliLinearDiscriminator(atac_shape, input_modality='atac', embedding=atac_embedding)
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
 
 
 class GanoliShallowGenerator(GanoliGenerator):
 
-    def __init__(self, input_shape, output_shape, input_modality='atac', hidden_dim=500, bias=True):
-        super().__init__(input_modality=input_modality)
+    def __init__(self, input_shape, output_shape, input_modality='atac', hidden_dim=500, bias=True, **kwargs):
+        super().__init__(input_modality=input_modality, **kwargs)
         self.linear1 = nn.Linear(input_shape, hidden_dim, bias=bias)
         self.leaky_relu = nn.LeakyReLU()
         self.linear2 = nn.Linear(hidden_dim, output_shape, bias=bias)
@@ -277,8 +286,8 @@ class GanoliShallowGenerator(GanoliGenerator):
 
 
 class GanoliShallowDiscriminator(GanoliDiscriminator):
-    def __init__(self, input_shape, input_modality='atac', hidden_dim=500, bias=True):
-        super().__init__(input_modality=input_modality)
+    def __init__(self, input_shape, input_modality='atac', hidden_dim=500, bias=True, **kwargs):
+        super().__init__(input_modality=input_modality, **kwargs)
 
         self.linear1 = nn.Linear(input_shape, hidden_dim, bias=bias)
         self.leaky_relu = nn.LeakyReLU()
@@ -294,17 +303,16 @@ class GanoliShallowDiscriminator(GanoliDiscriminator):
 
 
 class GanoliShallowGAN(GanoliGAN):
-    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True):
+    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True, rna_embedding=None, atac_embedding=None):
         generator_rna2atac = GanoliShallowGenerator(rna_shape, atac_shape, input_modality='rna', hidden_dim=hidden_dim,
-                                                    bias=bias)
+                                                    bias=bias, embedding=rna_embedding)
         generator_atac2rna = GanoliShallowGenerator(atac_shape, rna_shape, input_modality='atac', hidden_dim=hidden_dim,
-                                                    bias=bias)
+                                                    bias=bias, embedding=atac_embedding)
         discriminator_rna = GanoliShallowDiscriminator(rna_shape, input_modality='rna', hidden_dim=hidden_dim,
-                                                       bias=bias)
+                                                       bias=bias, embedding=rna_embedding)
         discriminator_atac = GanoliShallowDiscriminator(atac_shape, input_modality='atac', hidden_dim=hidden_dim,
-                                                        bias=bias)
+                                                        bias=bias, embedding=atac_embedding)
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
-
 
 if __name__ == '__main__':
     data_root = '/om2/user/rogerjin/data'
@@ -332,24 +340,10 @@ if __name__ == '__main__':
 
     def self_correlation(matrix, device='cuda:0'):
         matrix = torch.Tensor(matrix).to(device)
-        return (matrix.T @ matrix).cpu().numpy()
+        return matrix.T @ matrix
 
-    def embed(inp, embedding, device='cuda:0'):
-        inp = torch.Tensor(inp).to(device)
-        embedding = torch.Tensor(embedding).to(device)
-        return (inp @ embedding).cpu().numpy()
-
-    rna_embeddings = self_correlation(train_rna)
-    atac_embeddings = self_correlation(train_atac)
-    train_rna_embed = embed(train_rna, rna_embeddings)
-    train_atac_embed = embed(train_rna, atac_embeddings)
-    val_rna_embed = embed(val_rna, rna_embeddings)
-    val_atac_embed = embed(val_rna, atac_embeddings)
-
-    train_rna = train_rna_embed
-    train_atac = train_atac_embed
-    val_rna = val_rna_embed
-    val_atac = val_atac_embed
+    rna_embedding = self_correlation(train_rna)
+    atac_embedding = self_correlation(train_atac)
 
     train_rna = GanoliUnimodalDataset(train_rna)
     train_atac = GanoliUnimodalDataset(train_atac)
@@ -362,7 +356,10 @@ if __name__ == '__main__':
     train_dataloader = DataLoader(train_rna_atac, batch_size=32, num_workers=4)
     val_dataloader = DataLoader(val_rna_atac, batch_size=32, num_workers=4)
 
+
     # gan = GanoliLinearGAN(7445, 3808)
-    gan = GanoliShallowGAN(7445, 3808)
+    # gan = GanoliShallowGAN(7445, 3808)
+    gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
+    # gan = GanoliLinearGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
 
     trainer.fit(gan, train_dataloader, val_dataloader)
