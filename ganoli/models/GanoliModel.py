@@ -80,12 +80,12 @@ class GanoliGAN(pl.LightningModule):
             return self.supervised_training_step(batch, batch_idx)
 
         else:
-            return self.unsupervised_step(batch, batch_idx, optimizer_idx, data_partition='train')
+            return self.unsupervised_step(batch, batch_idx, optimizer_idx=optimizer_idx, data_partition='train')
 
-    def validation_step(self, batch, batch_idx, optimizer_idx):
+    def validation_step(self, batch, batch_idx):
 
         if not self.supervised:
-            return self.unsupervised_step(batch, batch_idx, optimizer_idx, data_partition='validation')
+            return self.unsupervised_step(batch, batch_idx, data_partition='validation')
 
     def supervised_training_step(self, batch, batch_idx):
 
@@ -106,12 +106,12 @@ class GanoliGAN(pl.LightningModule):
 
         return loss
 
-    def unsupervised_step(self, batch, batch_idx, optimizer_idx, data_partition='train'):
+    def unsupervised_step(self, batch, batch_idx, optimizer_idx=None, data_partition='train'):
 
         rna_real, atac_real = batch['rna'].float(), batch['atac'].float()
         rna_fake, atac_fake = self.generator_atac2rna(atac_real), self.generator_rna2atac(rna_real)
 
-        if optimizer_idx in [0, 1]:  # generator
+        if data_partition=='validation' or optimizer_idx in [0, 1]:  # generator
 
             rna_recon, atac_recon = self.generator_atac2rna(atac_fake), self.generator_rna2atac(rna_fake)
 
@@ -157,9 +157,10 @@ class GanoliGAN(pl.LightningModule):
                 self.log(f'checkpointer_objective', total_oracle_recon_loss, on_step=False, on_epoch=True)
 
             # return total_recon_loss + total_id_loss + total_gen_loss
-            return total_recon_loss + total_gen_loss
+            if data_partition=='train':
+                return total_recon_loss + total_gen_loss
 
-        elif optimizer_idx in [2, 3]:  # discriminator
+        elif data_partition=='validation' or optimizer_idx in [2, 3]:  # discriminator
             discr_rna_real, discr_atac_real = self.discriminator_rna(rna_real), self.discriminator_atac(atac_real)
             discr_rna_fake, discr_atac_fake = self.discriminator_rna(rna_fake), self.discriminator_atac(atac_fake)
 
@@ -171,7 +172,10 @@ class GanoliGAN(pl.LightningModule):
             self.log(f'{data_partition}_loss/discr_atac', atac_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
             self.log(f'{data_partition}_loss/discr_total', total_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
 
-            return total_discr_loss
+            if data_partition == 'train':
+                return total_discr_loss
+
+        return total_recon_loss + total_gen_los + total_discr_loss
 
     def configure_optimizers(self):
 
