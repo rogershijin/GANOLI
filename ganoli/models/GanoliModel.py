@@ -133,9 +133,16 @@ class GanoliGAN(pl.LightningModule):
             rna2atac_gen_loss = self.generator_loss(discr_atac_fake)
             total_gen_loss = atac2rna_gen_loss + rna2atac_gen_loss
 
-            self.log('loss/atac2rna_generator_loss', atac2rna_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/rna2atac_generator_loss', rna2atac_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/total_generator_loss', total_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/gen_atac2rna', atac2rna_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/gen_rna2atac', rna2atac_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/gen_total', total_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+
+            rna_oracle_recon_loss = self.reconstruction_loss(rna_fake, rna_real)
+            atac_oracle_recon_loss = self.reconstruction_loss(atac_fake, atac_real)
+            total_oracle_recon_loss = rna_oracle_recon_loss + atac_oracle_recon_loss
+            self.log('loss/oracle_rna', atac2rna_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/oracle_atac', rna2atac_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/oracle_total', total_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
 
             # return total_recon_loss + total_id_loss + total_gen_loss
             return total_recon_loss + total_gen_loss
@@ -148,9 +155,9 @@ class GanoliGAN(pl.LightningModule):
             atac_discr_loss = self.discriminator_loss(discr_atac_real, discr_atac_fake)
             total_discr_loss = rna_discr_loss + atac_discr_loss
 
-            self.log('loss/rna_discriminator_loss', rna_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/atac_discriminator_loss', atac_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/total_discriminator_loss', total_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/discr_rna', rna_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/discr_atac', atac_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log('loss/discr_total', total_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
 
             return total_discr_loss
 
