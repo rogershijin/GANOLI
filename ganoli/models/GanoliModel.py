@@ -168,7 +168,7 @@ class GanoliGAN(pl.LightningModule):
             if data_partition == 'train':
                 return total_recon_loss + total_gen_loss
 
-        elif data_partition == 'validation' or optimizer_idx in [2, 3]:  # discriminator
+        if data_partition == 'validation' or optimizer_idx in [2, 3]:  # discriminator
             discr_rna_real, discr_atac_real = self.discriminator_rna(rna_real), self.discriminator_atac(atac_real)
             discr_rna_fake, discr_atac_fake = self.discriminator_rna(rna_fake), self.discriminator_atac(atac_fake)
 
