@@ -108,10 +108,12 @@ class GanoliGAN(pl.LightningModule):
 
     def unsupervised_step(self, batch, batch_idx, optimizer_idx=None, data_partition='train'):
 
+        print(data_partition)
+
         rna_real, atac_real = batch['rna'].float(), batch['atac'].float()
         rna_fake, atac_fake = self.generator_atac2rna(atac_real), self.generator_rna2atac(rna_real)
 
-        if data_partition=='validation' or optimizer_idx in [0, 1]:  # generator
+        if data_partition == 'validation' or optimizer_idx in [0, 1]:  # generator
 
             rna_recon, atac_recon = self.generator_atac2rna(atac_fake), self.generator_rna2atac(rna_fake)
 
@@ -121,7 +123,8 @@ class GanoliGAN(pl.LightningModule):
 
             self.log(f'{data_partition}_loss/recon_rna', rna_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
             self.log(f'{data_partition}_loss/recon_atac', atac_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log(f'{data_partition}_loss/recon_total', total_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/recon_total', total_recon_loss, on_step=False, on_epoch=True,
+                     prog_bar=True)
 
             # todo: think about identity loss - not easy because atac/rna come in different sizes.
 
@@ -141,26 +144,31 @@ class GanoliGAN(pl.LightningModule):
             rna2atac_gen_loss = self.generator_loss(discr_atac_fake)
             total_gen_loss = atac2rna_gen_loss + rna2atac_gen_loss
 
-            self.log(f'{data_partition}_loss/gen_atac2rna', atac2rna_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log(f'{data_partition}_loss/gen_rna2atac', rna2atac_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/gen_atac2rna', atac2rna_gen_loss, on_step=False, on_epoch=True,
+                     prog_bar=True)
+            self.log(f'{data_partition}_loss/gen_rna2atac', rna2atac_gen_loss, on_step=False, on_epoch=True,
+                     prog_bar=True)
             self.log(f'{data_partition}_loss/gen_total', total_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
 
             rna_oracle_recon_loss = self.reconstruction_loss(rna_fake, rna_real)
             atac_oracle_recon_loss = self.reconstruction_loss(atac_fake, atac_real)
             total_oracle_recon_loss = rna_oracle_recon_loss + atac_oracle_recon_loss
 
-            self.log(f'{data_partition}_oracle/oracle_rna', rna_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log(f'{data_partition}_oracle/oracle_atac', atac_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log(f'{data_partition}_oracle/oracle_total', total_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_oracle/oracle_rna', rna_oracle_recon_loss, on_step=False, on_epoch=True,
+                     prog_bar=True)
+            self.log(f'{data_partition}_oracle/oracle_atac', atac_oracle_recon_loss, on_step=False, on_epoch=True,
+                     prog_bar=True)
+            self.log(f'{data_partition}_oracle/oracle_total', total_oracle_recon_loss, on_step=False, on_epoch=True,
+                     prog_bar=True)
 
             if data_partition == 'validation':
                 self.log(f'checkpointer_objective', total_oracle_recon_loss, on_step=False, on_epoch=True)
 
             # return total_recon_loss + total_id_loss + total_gen_loss
-            if data_partition=='train':
+            if data_partition == 'train':
                 return total_recon_loss + total_gen_loss
 
-        elif data_partition=='validation' or optimizer_idx in [2, 3]:  # discriminator
+        elif data_partition == 'validation' or optimizer_idx in [2, 3]:  # discriminator
             discr_rna_real, discr_atac_real = self.discriminator_rna(rna_real), self.discriminator_atac(atac_real)
             discr_rna_fake, discr_atac_fake = self.discriminator_rna(rna_fake), self.discriminator_atac(atac_fake)
 
@@ -170,7 +178,8 @@ class GanoliGAN(pl.LightningModule):
 
             self.log(f'{data_partition}_loss/discr_rna', rna_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
             self.log(f'{data_partition}_loss/discr_atac', atac_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log(f'{data_partition}_loss/discr_total', total_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/discr_total', total_discr_loss, on_step=False, on_epoch=True,
+                     prog_bar=True)
 
             if data_partition == 'train':
                 return total_discr_loss
