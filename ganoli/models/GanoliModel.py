@@ -311,9 +311,6 @@ if __name__ == '__main__':
     data_path = opj(data_root, 'data_files_new.npz')
     data = np.load(data_path)
 
-    # gan = GanoliLinearGAN(7445, 3808)
-    gan = GanoliShallowGAN(7445, 3808)
-
     kwargs = {}
     if torch.cuda.is_available():
         kwargs['gpus'] = -1
@@ -324,14 +321,45 @@ if __name__ == '__main__':
                                    save_top_k=10, auto_insert_metric_name=False)
 
     trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer], check_val_every_n_epoch=3)
-    train_rna = GanoliUnimodalDataset(data['rna_train'])
-    train_atac = GanoliUnimodalDataset(data['atac_train_small'])
+
+    train_rna = data['rna_train']
+    train_atac = data['atac_train_small']
+    val_rna = data['rna_test']
+    val_atac = data['atac_test_small']
+
+    def self_correlation(matrix, device='cuda:0'):
+        matrix = torch.Tensor(matrix).to(device)
+        return matrix.T @ matrix
+
+    def embed(inp, embedding, device='cuda:0'):
+        inp = inp.Tensor(inp).to(device)
+        embedding = inp.Tensor(embedding).to(device)
+        return (inp @ embedding).cpu().numpy()
+
+    rna_embeddings = self_correlation(train_rna)
+    atac_embeddings = self_correlatioun(train_atac)
+    train_rna_embed = embed(train_rna, rna_embeddings)
+    train_atac_embed = embed(train_rna, atac_embeddings)
+    val_rna_embed = embed(val_rna, rna_embeddings)
+    val_atac_embed = embed(val_rna, atac_embeddings)
+
+    train_rna = train_rna_embed
+    train_atac = train_atac_embed
+    val_rna = val_rna_embed
+    val_atac = val_atac_embed
+
+    train_rna = GanoliUnimodalDataset(train_rna)
+    train_atac = GanoliUnimodalDataset(train_atac)
     train_rna_atac = GanoliMultimodalDataset(rna=train_rna, atac=train_atac)
 
-    val_rna = GanoliUnimodalDataset(data['rna_test'])
-    val_atac = GanoliUnimodalDataset(data['atac_test_small'])
+    val_rna = GanoliUnimodalDataset(val_rna)
+    val_atac = GanoliUnimodalDataset(val_atac)
     val_rna_atac = GanoliMultimodalDataset(rna=val_rna, atac=val_atac)
 
     train_dataloader = DataLoader(train_rna_atac, batch_size=32, num_workers=4)
     val_dataloader = DataLoader(val_rna_atac, batch_size=32, num_workers=4)
+
+    # gan = GanoliLinearGAN(7445, 3808)
+    gan = GanoliShallowGAN(7445, 3808)
+
     trainer.fit(gan, train_dataloader, val_dataloader)
