@@ -71,7 +71,7 @@ class GanoliGAN(pl.LightningModule):
         else:
             raise ValueError(f"Invalid datatype {data_type}, expected 'rna' or 'atac'")
 
-    def on_epoch_start(self):
+    def on_train_epoch_start(self):
         print('\n')
 
     def training_step(self, batch, batch_idx, optimizer_idx):
@@ -107,8 +107,6 @@ class GanoliGAN(pl.LightningModule):
         return loss
 
     def unsupervised_step(self, batch, batch_idx, optimizer_idx=None, data_partition='train'):
-
-        print(data_partition)
 
         rna_real, atac_real = batch['rna'].float(), batch['atac'].float()
         rna_fake, atac_fake = self.generator_atac2rna(atac_real), self.generator_rna2atac(rna_real)
