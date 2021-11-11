@@ -80,7 +80,12 @@ class GanoliGAN(pl.LightningModule):
             return self.supervised_training_step(batch, batch_idx)
 
         else:
-            return self.unsupervised_training_step(batch, batch_idx, optimizer_idx)
+            return self.unsupervised_step(batch, batch_idx, optimizer_idx, data_partition='train')
+
+    def validation_step(self, batch, batch_idx, optimizer_idx):
+
+        if not self.supervised:
+            return self.unsupervised_step(batch, batch_idx, optimizer_idx, data_partition='validation')
 
     def supervised_training_step(self, batch, batch_idx):
 
@@ -101,7 +106,7 @@ class GanoliGAN(pl.LightningModule):
 
         return loss
 
-    def unsupervised_training_step(self, batch, batch_idx, optimizer_idx):
+    def unsupervised_step(self, batch, batch_idx, optimizer_idx, data_partition='train'):
 
         rna_real, atac_real = batch['rna'].float(), batch['atac'].float()
         rna_fake, atac_fake = self.generator_atac2rna(atac_real), self.generator_rna2atac(rna_real)
@@ -114,9 +119,9 @@ class GanoliGAN(pl.LightningModule):
             atac_recon_loss = self.reconstruction_loss(atac_real, atac_recon)
             total_recon_loss = rna_recon_loss + atac_recon_loss
 
-            self.log('loss/recon_rna', rna_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/recon_atac', atac_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/recon_total', total_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/recon_rna', rna_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/recon_atac', atac_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/recon_total', total_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
 
             # todo: think about identity loss - not easy because atac/rna come in different sizes.
 
@@ -136,19 +141,20 @@ class GanoliGAN(pl.LightningModule):
             rna2atac_gen_loss = self.generator_loss(discr_atac_fake)
             total_gen_loss = atac2rna_gen_loss + rna2atac_gen_loss
 
-            self.log('loss/gen_atac2rna', atac2rna_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/gen_rna2atac', rna2atac_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/gen_total', total_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/gen_atac2rna', atac2rna_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/gen_rna2atac', rna2atac_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/gen_total', total_gen_loss, on_step=False, on_epoch=True, prog_bar=True)
 
             rna_oracle_recon_loss = self.reconstruction_loss(rna_fake, rna_real)
             atac_oracle_recon_loss = self.reconstruction_loss(atac_fake, atac_real)
             total_oracle_recon_loss = rna_oracle_recon_loss + atac_oracle_recon_loss
 
-            self.log('oracle/oracle_rna', rna_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('oracle/oracle_atac', atac_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('oracle/oracle_total', total_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_oracle/oracle_rna', rna_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_oracle/oracle_atac', atac_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_oracle/oracle_total', total_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
 
-            self.log('checkpointer_objective', total_oracle_recon_loss, on_step=False, on_epoch=True)
+            if data_partition == 'validation':
+                self.log(f'checkpointer_objective', total_oracle_recon_loss, on_step=False, on_epoch=True)
 
             # return total_recon_loss + total_id_loss + total_gen_loss
             return total_recon_loss + total_gen_loss
@@ -161,9 +167,9 @@ class GanoliGAN(pl.LightningModule):
             atac_discr_loss = self.discriminator_loss(discr_atac_real, discr_atac_fake)
             total_discr_loss = rna_discr_loss + atac_discr_loss
 
-            self.log('loss/discr_rna', rna_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/discr_atac', atac_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
-            self.log('loss/discr_total', total_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/discr_rna', rna_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/discr_atac', atac_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log(f'{data_partition}_loss/discr_total', total_discr_loss, on_step=False, on_epoch=True, prog_bar=True)
 
             return total_discr_loss
 
@@ -303,13 +309,18 @@ if __name__ == '__main__':
 
     tb_logger = loggers.TensorBoardLogger("logs/debug/")
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
-                                   filename='epoch={epoch:02d}-oracle_total={checkpointer_objective:.2f}',
+                                   filename='epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
                                    save_top_k=10, auto_insert_metric_name=False)
 
     trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer])
     train_rna = GanoliUnimodalDataset(data['rna_train'])
     train_atac = GanoliUnimodalDataset(data['atac_train_small'])
-    rna_atac = GanoliMultimodalDataset(rna=train_rna, atac=train_atac)
+    train_rna_atac = GanoliMultimodalDataset(rna=train_rna, atac=train_atac)
 
-    train_dataloader = DataLoader(rna_atac, batch_size=32, num_workers=4)
-    trainer.fit(gan, train_dataloader)
+    val_rna = GanoliUnimodalDataset(data['rna_test'])
+    val_atac = GanoliUnimodalDataset(data['atac_test_small'])
+    val_rna_atac = GanoliMultimodalDataset(rna=test_rna, atac=test_atac)
+
+    train_dataloader = DataLoader(train_rna_atac, batch_size=32, num_workers=4)
+    val_dataloader = DataLoader(val_rna_atac, batch_size=32, num_workers=4)
+    trainer.fit(gan, train_dataloader, val_dataloader)
