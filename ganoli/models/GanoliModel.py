@@ -71,7 +71,7 @@ class GanoliGAN(pl.LightningModule):
         else:
             raise ValueError(f"Invalid datatype {data_type}, expected 'rna' or 'atac'")
 
-    def on_train_epoch_start(self):
+    def on_epoch_end(self):
         print('\n')
 
     def training_step(self, batch, batch_idx, optimizer_idx):
