@@ -7,6 +7,7 @@ sys.excepthook = ultratb.FormattedTB(mode='Verbose', color_scheme='Linux', call_
 
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer, seed_everything, loggers
+from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
 import torch.nn as nn
 torch.autograd.set_detect_anomaly(True)
@@ -144,6 +145,8 @@ class GanoliGAN(pl.LightningModule):
             self.log('oracle/oracle_rna', rna_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
             self.log('oracle/oracle_atac', atac_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
             self.log('oracle/oracle_total', total_oracle_recon_loss, on_step=False, on_epoch=True, prog_bar=True)
+
+            self.log('checkpointer_objective', total_oracle_recon_loss, on_step=False, on_epoch=True)
 
             # return total_recon_loss + total_id_loss + total_gen_loss
             return total_recon_loss + total_gen_loss
@@ -293,8 +296,9 @@ if __name__ == '__main__':
         kwargs['gpus'] = -1
 
     tb_logger = loggers.TensorBoardLogger("logs/shallow/")
+    checkpointer = ModelCheckpoint(monitor='checkpointer_objective', save_top_k=10)
 
-    trainer = Trainer(**kwargs, logger=tb_logger)
+    trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer])
     train_rna = GanoliUnimodalDataset(data['rna_train'])
     train_atac = GanoliUnimodalDataset(data['atac_train_small'])
     rna_atac = GanoliMultimodalDataset(rna=train_rna, atac=train_atac)
