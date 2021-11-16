@@ -209,7 +209,7 @@ class GanoliGenerator(pl.LightningModule):
     def __init__(self, input_modality='atac', output_modality='rna', embedding=None, embedding_labels=None):
         super().__init__()
 
-        self.tensorboard = self.logger.experiment
+        # self.tensorboard = self.logger.experiment
 
         self.model = None
         self.input_modality = input_modality

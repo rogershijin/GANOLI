@@ -3,3 +3,5 @@ lightning_logs/
 .ipynb_checkpoints/
 *.out
 *.error
+__pycache__/
+*.swp
