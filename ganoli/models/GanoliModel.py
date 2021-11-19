@@ -256,6 +256,18 @@ class GanoliLinearGenerator(GanoliGenerator):
 
         self.model = nn.Linear(input_shape, output_shape, bias=bias)
 
+class GanoliLogisticGenerator(GanoliGenerator):
+
+    def __init__(self, input_shape, output_shape, input_modality='atac', bias=True, **kwargs):
+        super().__init__(input_modality=input_modality, **kwargs)
+        self.linear = nn.Linear(input_shape, output_shape, bias=bias)
+        self.sigmoid = nn.Sigmoid()
+
+        def model(inp):
+            return self.sigmoid(self.linear(inp))
+
+        self.model = model
+
 
 class GanoliLinearDiscriminator(GanoliDiscriminator):
 
@@ -269,6 +281,15 @@ class GanoliLinearGAN(GanoliGAN):
 
     def __init__(self, rna_shape, atac_shape, bias=True, rna_embedding=None, atac_embedding=None):
         generator_rna2atac = GanoliLinearGenerator(rna_shape, atac_shape, input_modality='rna', embedding=rna_embedding)
+        generator_atac2rna = GanoliLinearGenerator(atac_shape, rna_shape, input_modality='atac', embedding=atac_embedding)
+        discriminator_rna = GanoliLinearDiscriminator(rna_shape, input_modality='rna', embedding=rna_embedding)
+        discriminator_atac = GanoliLinearDiscriminator(atac_shape, input_modality='atac', embedding=atac_embedding)
+        super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
+
+class GanoliLogisticGAN(GanoliGAN):
+
+    def __init__(self, rna_shape, atac_shape, bias=True, rna_embedding=None, atac_embedding=None):
+        generator_rna2atac = GanoliLogisticGenerator(rna_shape, atac_shape, input_modality='rna', embedding=rna_embedding)
         generator_atac2rna = GanoliLinearGenerator(atac_shape, rna_shape, input_modality='atac', embedding=atac_embedding)
         discriminator_rna = GanoliLinearDiscriminator(rna_shape, input_modality='rna', embedding=rna_embedding)
         discriminator_atac = GanoliLinearDiscriminator(atac_shape, input_modality='atac', embedding=atac_embedding)
@@ -387,8 +408,9 @@ if __name__ == '__main__':
 
 
     # gan = GanoliLinearGAN(7445, 3808)
+    gan = GanoliLogisticGAN(7445, 3808)
     # gan = GanoliShallowGAN(7445, 3808)
     # gan = GanoliLinearGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
-    gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding, rna_embedding_labels=gene_labels)
+    # gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding, rna_embedding_labels=gene_labels)
 
     trainer.fit(gan, train_dataloader, val_dataloader)
