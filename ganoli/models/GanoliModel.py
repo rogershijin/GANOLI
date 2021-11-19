@@ -390,7 +390,8 @@ if __name__ == '__main__':
 
     def self_correlation(matrix, device='cuda:0'):
         matrix = torch.Tensor(matrix).to(device)
-        return matrix.T @ matrix
+        # return matrix.T @ matrix
+        return torch.corrcoef(matrix.T)
 
     rna_embedding = self_correlation(train_rna)
     atac_embedding = self_correlation(train_atac)
@@ -408,9 +409,10 @@ if __name__ == '__main__':
 
 
     # gan = GanoliLinearGAN(7445, 3808)
-    gan = GanoliLogisticGAN(7445, 3808)
+    # gan = GanoliLogisticGAN(7445, 3808)
     # gan = GanoliShallowGAN(7445, 3808)
     # gan = GanoliLinearGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
+    gan = GanoliLogisticGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
     # gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding, rna_embedding_labels=gene_labels)
 
     trainer.fit(gan, train_dataloader, val_dataloader)
