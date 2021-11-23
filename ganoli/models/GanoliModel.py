@@ -375,10 +375,11 @@ if __name__ == '__main__':
     # tb_logger = loggers.TensorBoardLogger("logs/linear")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow/")
     # tb_logger = loggers.TensorBoardLogger("logs/linear_embed_corr/")
+    # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr/")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr/")
 
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
-                                   filename='epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
+            filename='step={step:02d}-epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
                                    save_top_k=10, auto_insert_metric_name=False)
 
     trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer], check_val_every_n_epoch=3)
