@@ -393,6 +393,10 @@ if __name__ == '__main__':
         # return matrix.T @ matrix
         return torch.corrcoef(matrix.T)
 
+    def embedding(matrix):
+        return torch.pca_lowrank(matrix, q=10)
+        # return self_correlation(matrix)
+
     rna_embedding = self_correlation(train_rna)
     atac_embedding = self_correlation(train_atac)
 
