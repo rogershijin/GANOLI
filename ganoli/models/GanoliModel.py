@@ -377,7 +377,8 @@ if __name__ == '__main__':
     # tb_logger = loggers.TensorBoardLogger("logs/linear_embed_corr/")
     # tb_logger = loggers.TensorBoardLogger("logs/logistic_lr=0.0002_beta1=0.5/")
     # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr/")
-    tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr_lr=0.0002_beta1=0.5/")
+    # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr_lr=0.0002_beta1=0.5/")
+    tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_pca_lr=0.0002_beta1=0.5/")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr/")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr_lr=0.0002_beta1=0.5/")
 
