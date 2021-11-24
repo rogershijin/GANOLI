@@ -187,16 +187,16 @@ class GanoliGAN(pl.LightningModule):
 
     def configure_optimizers(self):
 
-        generator_rna2atac_opt = torch.optim.Adam(self.generator_rna2atac.parameters())
-        generator_atac2rna_opt = torch.optim.Adam(self.generator_atac2rna.parameters())
+        generator_rna2atac_opt = torch.optim.Adam(self.generator_rna2atac.parameters(), lr=0.0002, betas=[0.5, 0.999])
+        generator_atac2rna_opt = torch.optim.Adam(self.generator_atac2rna.parameters(), lr=0.0002, betas=[0.5, 0.999])
 
         generator_opts = [generator_rna2atac_opt, generator_atac2rna_opt]
 
         discriminator_opts = []
 
         if not self.supervised:
-            discriminator_rna_opt = torch.optim.Adam(self.discriminator_rna.parameters())
-            discriminator_atac_opt = torch.optim.Adam(self.discriminator_atac.parameters())
+            discriminator_rna_opt = torch.optim.Adam(self.discriminator_rna.parameters(), lr=0.0002, betas=[0.5, 0.999])
+            discriminator_atac_opt = torch.optim.Adam(self.discriminator_atac.parameters(), lr=0.0002, betas=[0.5, 0.999])
             discriminator_opts = [discriminator_rna_opt, discriminator_atac_opt]
 
         opts = generator_opts + discriminator_opts
@@ -371,14 +371,18 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         kwargs['gpus'] = -1
 
-    tb_logger = loggers.TensorBoardLogger("logs/debug/")
+    # tb_logger = loggers.TensorBoardLogger("logs/debug/")
     # tb_logger = loggers.TensorBoardLogger("logs/linear")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow/")
     # tb_logger = loggers.TensorBoardLogger("logs/linear_embed_corr/")
+    # tb_logger = loggers.TensorBoardLogger("logs/logistic_lr=0.0002_beta1=0.5/")
+    # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr/")
+    tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr_lr=0.0002_beta1=0.5/")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr/")
+    # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr_lr=0.0002_beta1=0.5/")
 
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
-                                   filename='epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
+            filename='step={step:02d}-epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
                                    save_top_k=10, auto_insert_metric_name=False)
 
     trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer], check_val_every_n_epoch=3)

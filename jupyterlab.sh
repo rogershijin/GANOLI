@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=jupyterlab
-#SBATCH --output=jupyterlab.out
-#SBATCH --error=jupyterlab.error
+#SBATCH --output=logs/jupyterlab.out
+#SBATCH --error=logs/jupyterlab.error
 #SBATCH --mem=32000
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=4
