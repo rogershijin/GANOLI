@@ -392,7 +392,8 @@ if __name__ == '__main__':
     # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr/")
     # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr_lr=0.0002_beta1=0.5/")
 
-    tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_pca_lr=0.0002_beta1=0.5/")
+    # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_pca_lr=0.0002_beta1=0.5/")
+    tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_pca_corr_lr=0.0002_beta1=0.5/")
 
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr/")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr_lr=0.0002_beta1=0.5/")
@@ -424,8 +425,10 @@ if __name__ == '__main__':
     # atac_embedding = embedding(train_atac)
     pca_rna = PCA(n_components=20)
     pca_atac = PCA(n_components=20)
-    pca_rna.fit_transform(train_rna)
-    pca_atac.fit_transform(train_atac)
+    # pca_rna.fit_transform(train_rna)
+    # pca_atac.fit_transform(train_atac)
+    pca_rna.fit_transform(self_correlation(train_rna, device='cpu'))
+    pca_atac.fit_transform(self_correlation(train_atac, device='cpu'))
     rna_embedding = torch.Tensor(pca_rna.components_.T).to('cuda:0')
     atac_embedding = torch.Tensor(pca_atac.components_.T).to('cuda:0')
 
