@@ -28,7 +28,7 @@ seed_everything(42, workers=True)
 
 class GanoliGAN(pl.LightningModule):
 
-    def __init__(self, generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac):
+    def __init__(self, generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac, hypers={}):
         super().__init__()
         # self.automatic_optimization = False
 
@@ -42,6 +42,9 @@ class GanoliGAN(pl.LightningModule):
         self.identity_loss_fn = MSELoss()
         self.generator_loss_fn = BCEWithLogitsLoss()
         self.discriminator_loss_fn = BCEWithLogitsLoss()
+
+        self.hypers = hypers
+        self.log_hyperparams(self.hypers)
 
     def supervise(self):
         self.supervised = True
@@ -190,16 +193,18 @@ class GanoliGAN(pl.LightningModule):
 
     def configure_optimizers(self):
 
-        generator_rna2atac_opt = torch.optim.Adam(self.generator_rna2atac.parameters(), lr=0.0002, betas=[0.5, 0.999])
-        generator_atac2rna_opt = torch.optim.Adam(self.generator_atac2rna.parameters(), lr=0.0002, betas=[0.5, 0.999])
+        lr = self.hypers.get('lr', 0.0002)
+
+        generator_rna2atac_opt = torch.optim.Adam(self.generator_rna2atac.parameters(), lr=lr, betas=[0.5, 0.999])
+        generator_atac2rna_opt = torch.optim.Adam(self.generator_atac2rna.parameters(), lr=lr, betas=[0.5, 0.999])
 
         generator_opts = [generator_rna2atac_opt, generator_atac2rna_opt]
 
         discriminator_opts = []
 
         if not self.supervised:
-            discriminator_rna_opt = torch.optim.Adam(self.discriminator_rna.parameters(), lr=0.0002, betas=[0.5, 0.999])
-            discriminator_atac_opt = torch.optim.Adam(self.discriminator_atac.parameters(), lr=0.0002, betas=[0.5, 0.999])
+            discriminator_rna_opt = torch.optim.Adam(self.discriminator_rna.parameters(), lr=lr, betas=[0.5, 0.999])
+            discriminator_atac_opt = torch.optim.Adam(self.discriminator_atac.parameters(), lr=lr, betas=[0.5, 0.999])
             discriminator_opts = [discriminator_rna_opt, discriminator_atac_opt]
 
         opts = generator_opts + discriminator_opts
@@ -378,7 +383,7 @@ class GanoliPCAGAN(GanoliGAN):
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
         
 class GanoliShallowLogisticPCAGAN(GanoliGAN):
-    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True, rna_embedding=None, atac_embedding=None, rna_embedding_labels=None, pca_n_components=20):
+    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True, rna_embedding=None, atac_embedding=None, rna_embedding_labels=None, pca_n_components=20, hypers={}):
         generator_rna2atac = GanoliShallowLogisticGenerator(pca_n_components, atac_shape, input_modality='rna', hidden_dim=hidden_dim,
                                                     bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
         generator_atac2rna = GanoliShallowGenerator(pca_n_components, rna_shape, input_modality='atac', hidden_dim=hidden_dim,
@@ -387,7 +392,8 @@ class GanoliShallowLogisticPCAGAN(GanoliGAN):
                                                        bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
         discriminator_atac = GanoliShallowDiscriminator(pca_n_components, input_modality='atac', hidden_dim=hidden_dim,
                                                         bias=bias, embedding=atac_embedding)
-        super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
+        hypers['pca_n_components'] = pca_n_components
+        super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac, hypers=hypers)
 
 class GanoliMLPGenerator(GanoliGAN):
 
@@ -503,7 +509,6 @@ if __name__ == '__main__':
     # gan = GanoliLinearGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
     # gan = GanoliLogisticGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
     # gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding, rna_embedding_labels=gene_labels)
-
 
     gan = GanoliShallowLogisticPCAGAN(rna_dim, atac_dim, rna_embedding=rna_embedding, atac_embedding=atac_embedding, pca_n_components=n_components)
 
