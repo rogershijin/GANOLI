@@ -448,9 +448,9 @@ if __name__ == '__main__':
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr/")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr_lr=0.0002_beta1=0.5/")
     
-    tb_logger = loggers.TensorBoardLogger("logs/shallow_logistic_embed_pca_corr_lr=0.0002_beta1=0.5/")
+    # tb_logger = loggers.TensorBoardLogger("logs/shallow_logistic_embed_pca_corr_lr=0.0002_beta1=0.5/")
 
-#     tb_logger = loggers.TensorBoardLogger("logs/debug/")
+    tb_logger = loggers.TensorBoardLogger("logs/debug/")
 
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
             filename='step={step:02d}-epoch={epoch:02d}-val_oracle_rna={checkpointer_objective:.2f}',
