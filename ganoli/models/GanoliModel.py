@@ -20,6 +20,8 @@ import numpy as np
 from GanoliDataset import GanoliUnimodalDataset, GanoliMultimodalDataset
 import pandas as pd
 from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+import anndata as ad
 
 seed_everything(42, workers=True)
 
@@ -162,7 +164,7 @@ class GanoliGAN(pl.LightningModule):
                      prog_bar=True)
 
             if data_partition == 'validation':
-                self.log(f'checkpointer_objective', total_oracle_recon_loss, on_step=False, on_epoch=True)
+                self.log(f'checkpointer_objective', rna_oracle_recon_loss, on_step=False, on_epoch=True)
 
             # return total_recon_loss + total_id_loss + total_gen_loss
             if data_partition == 'train':
@@ -312,6 +314,24 @@ class GanoliShallowGenerator(GanoliGenerator):
             return x
 
         self.model = model
+        
+class GanoliShallowLogisticGenerator(GanoliGenerator):
+
+    def __init__(self, input_shape, output_shape, input_modality='atac', hidden_dim=500, bias=True, **kwargs):
+        super().__init__(input_modality=input_modality, **kwargs)
+        self.linear1 = nn.Linear(input_shape, hidden_dim, bias=bias)
+        self.leaky_relu = nn.LeakyReLU()
+        self.linear2 = nn.Linear(hidden_dim, output_shape, bias=bias)
+        self.sigmoid = nn.Sigmoid()
+
+        def model(x):
+            x = self.linear1(x)
+            x = self.leaky_relu(x)
+            x = self.linear2(x)
+            x = self.sigmoid(x)
+            return x
+
+        self.model = model
 
 
 class GanoliShallowDiscriminator(GanoliDiscriminator):
@@ -341,16 +361,31 @@ class GanoliShallowGAN(GanoliGAN):
         discriminator_atac = GanoliShallowDiscriminator(atac_shape, input_modality='atac', hidden_dim=hidden_dim,
                                                         bias=bias, embedding=atac_embedding)
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
+        
+        
+
 
 class GanoliPCAGAN(GanoliGAN):
-    def __init__(self, rna_shape, atac_shape, bias=True, rna_embedding=None, atac_embedding=None, rna_embedding_labels=None, pca_dimension=20):
-        generator_rna2atac = GanoliLogisticGenerator(pca_dimension, atac_shape, input_modality='rna',
+    def __init__(self, rna_shape, atac_shape, bias=True, rna_embedding=None, atac_embedding=None, rna_embedding_labels=None, pca_n_components=20):
+        generator_rna2atac = GanoliLogisticGenerator(pca_n_components, atac_shape, input_modality='rna',
                                                     bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
-        generator_atac2rna = GanoliLinearGenerator(pca_dimension, rna_shape, input_modality='atac',
+        generator_atac2rna = GanoliLinearGenerator(pca_n_components, rna_shape, input_modality='atac',
                                                     bias=bias, embedding=atac_embedding)
-        discriminator_rna = GanoliLinearDiscriminator(pca_dimension, input_modality='rna',
+        discriminator_rna = GanoliLinearDiscriminator(pca_n_components, input_modality='rna',
                                                        bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
-        discriminator_atac = GanoliLinearDiscriminator(pca_dimension, input_modality='atac',
+        discriminator_atac = GanoliLinearDiscriminator(pca_n_components, input_modality='atac',
+                                                        bias=bias, embedding=atac_embedding)
+        super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
+        
+class GanoliShallowLogisticPCAGAN(GanoliGAN):
+    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True, rna_embedding=None, atac_embedding=None, rna_embedding_labels=None, pca_n_components=20):
+        generator_rna2atac = GanoliShallowLogisticGenerator(pca_n_components, atac_shape, input_modality='rna', hidden_dim=hidden_dim,
+                                                    bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
+        generator_atac2rna = GanoliShallowGenerator(pca_n_components, rna_shape, input_modality='atac', hidden_dim=hidden_dim,
+                                                    bias=bias, embedding=atac_embedding)
+        discriminator_rna = GanoliShallowDiscriminator(pca_n_components, input_modality='rna', hidden_dim=hidden_dim,
+                                                       bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
+        discriminator_atac = GanoliShallowDiscriminator(pca_n_components, input_modality='atac', hidden_dim=hidden_dim,
                                                         bias=bias, embedding=atac_embedding)
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
 
@@ -372,34 +407,47 @@ class GanoliMLPGenerator(GanoliGAN):
 
 
 if __name__ == '__main__':
-    data_root = '/om2/user/rogerjin/data'
+    data_root = '/om2/user/rogerjin/data/Ben'
     data_path = opj(data_root, 'data_files_new.npz')
-    data = np.load(data_path)
+    data = np.load(data_path, allow_pickle=True)
+    # gene_list = pd.read_csv(f'{data_root}/gene_list.csv', header=None)
+    # chosen_genes = gene_list[data['rna_good_feats']]
+    # gene_labels = list(chosen_genes[1])
 
-    gene_list = pd.read_csv(f'{data_root}/gene_list.csv', header=None)
-    chosen_genes = gene_list[data['rna_good_feats']]
-    gene_labels = list(chosen_genes[1])
+#     data_dir='/om2/user/rogerjin/data/NeurIPS2021/phase2/predict_modality'
+#     rna_dir=f'{data_dir}/openproblems_bmmc_multiome_phase2_rna'
+#     atac_dir=f'{data_dir}/openproblems_bmmc_multiome_phase2_mod2'
+
+#     rna = ad.read_h5ad(f'{rna_dir}/openproblems_bmmc_multiome_phase2_rna.censor_dataset.output_train_mod1.h5ad')
+#     atac = ad.read_h5ad(f'{rna_dir}/openproblems_bmmc_multiome_phase2_rna.censor_dataset.output_train_mod2.h5ad')
+
+#     train_rna, val_rna, train_atac, val_atac = train_test_split(rna, atac, test_size=0.2, random_state=42)
+#     train_rna, val_rna, train_atac, val_atac = train_rna.X.toarray(), val_rna.X.toarray(), train_atac.X.toarray(), val_atac.X.toarray()
 
     kwargs = {}
     if torch.cuda.is_available():
         kwargs['gpus'] = -1
 
-    # tb_logger = loggers.TensorBoardLogger("logs/debug/")
     # tb_logger = loggers.TensorBoardLogger("logs/linear")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow/")
     # tb_logger = loggers.TensorBoardLogger("logs/linear_embed_corr/")
     # tb_logger = loggers.TensorBoardLogger("logs/logistic_lr=0.0002_beta1=0.5/")
     # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr/")
     # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_corr_lr=0.0002_beta1=0.5/")
-
     # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_pca_lr=0.0002_beta1=0.5/")
-    tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_pca_corr_lr=0.0002_beta1=0.5/")
+    # tb_logger = loggers.TensorBoardLogger("logs/logistic_embed_pca_corr_lr=0.0002_beta1=0.5/")
+
+    # tb_logger = loggers.TensorBoardLogger("neurips/logistic_embed_pca_corr_lr=0.0002_beta1=0.5_ncomponents=20/")
 
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr/")
     # tb_logger = loggers.TensorBoardLogger("logs/shallow_embed_corr_lr=0.0002_beta1=0.5/")
+    
+    tb_logger = loggers.TensorBoardLogger("logs/shallow_logistic_embed_pca_corr_lr=0.0002_beta1=0.5/")
+
+#     tb_logger = loggers.TensorBoardLogger("logs/debug/")
 
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
-            filename='step={step:02d}-epoch={epoch:02d}-val_oracle_total={checkpointer_objective:.2f}',
+            filename='step={step:02d}-epoch={epoch:02d}-val_oracle_rna={checkpointer_objective:.2f}',
                                    save_top_k=10, auto_insert_metric_name=False)
 
     trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer], check_val_every_n_epoch=3)
@@ -423,14 +471,18 @@ if __name__ == '__main__':
 
     # rna_embedding = embedding(train_rna)
     # atac_embedding = embedding(train_atac)
-    pca_rna = PCA(n_components=20)
-    pca_atac = PCA(n_components=20)
+    n_components = 20
+    pca_rna = PCA(n_components=n_components)
+    pca_atac = PCA(n_components=n_components)
     # pca_rna.fit_transform(train_rna)
     # pca_atac.fit_transform(train_atac)
-    pca_rna.fit_transform(self_correlation(train_rna, device='cpu'))
-    pca_atac.fit_transform(self_correlation(train_atac, device='cpu'))
+    pca_rna.fit_transform(self_correlation(train_rna, device='cuda:0').detach().cpu().numpy())
+    pca_atac.fit_transform(self_correlation(train_atac, device='cuda:0').detach().cpu().numpy())
     rna_embedding = torch.Tensor(pca_rna.components_.T).to('cuda:0')
     atac_embedding = torch.Tensor(pca_atac.components_.T).to('cuda:0')
+
+    rna_dim = train_rna.shape[1]
+    atac_dim = train_atac.shape[1]
 
     train_rna = GanoliUnimodalDataset(train_rna)
     train_atac = GanoliUnimodalDataset(train_atac)
@@ -440,8 +492,9 @@ if __name__ == '__main__':
     val_atac = GanoliUnimodalDataset(val_atac)
     val_rna_atac = GanoliMultimodalDataset(rna=val_rna, atac=val_atac)
 
-    train_dataloader = DataLoader(train_rna_atac, batch_size=32, num_workers=4)
-    val_dataloader = DataLoader(val_rna_atac, batch_size=32, num_workers=4)
+    batch_size = 32
+    train_dataloader = DataLoader(train_rna_atac, batch_size=batch_size, num_workers=4)
+    val_dataloader = DataLoader(val_rna_atac, batch_size=batch_size, num_workers=4)
 
 
     # gan = GanoliLinearGAN(7445, 3808)
@@ -450,6 +503,8 @@ if __name__ == '__main__':
     # gan = GanoliLinearGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
     # gan = GanoliLogisticGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
     # gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding, rna_embedding_labels=gene_labels)
-    gan = GanoliPCAGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding, pca_dimension=20)
+
+
+    gan = GanoliShallowLogisticPCAGAN(rna_dim, atac_dim, rna_embedding=rna_embedding, atac_embedding=atac_embedding, pca_n_components=n_components)
 
     trainer.fit(gan, train_dataloader, val_dataloader)
