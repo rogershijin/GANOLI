@@ -44,7 +44,6 @@ class GanoliGAN(pl.LightningModule):
         self.discriminator_loss_fn = BCEWithLogitsLoss()
 
         self.hypers = hypers
-        self.log_hyperparams(self.hypers)
 
     def supervise(self):
         self.supervised = True
@@ -80,6 +79,10 @@ class GanoliGAN(pl.LightningModule):
 
     def on_epoch_end(self):
         print('\n')
+
+    def on_train_start(self):
+        print('claled on train start', self.hypers)
+        self.logger.log_hyperparams(self.hypers)
 
     def training_step(self, batch, batch_idx, optimizer_idx):
 
