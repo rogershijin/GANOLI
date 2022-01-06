@@ -28,7 +28,7 @@ seed_everything(42, workers=True)
 
 class GanoliGAN(pl.LightningModule):
 
-    def __init__(self, generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac, hypers={}):
+    def __init__(self, generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac, lr=1e-3):
         super().__init__()
         # self.automatic_optimization = False
 
@@ -43,7 +43,7 @@ class GanoliGAN(pl.LightningModule):
         self.generator_loss_fn = BCEWithLogitsLoss()
         self.discriminator_loss_fn = BCEWithLogitsLoss()
 
-        self.hypers = hypers
+        self.save_hyperparameters('lr')
 
     def supervise(self):
         self.supervised = True
@@ -81,8 +81,7 @@ class GanoliGAN(pl.LightningModule):
         print('\n')
 
     def on_train_start(self):
-        print('claled on train start', self.hypers)
-        self.logger.log_hyperparams(self.hypers)
+        pass
 
     def training_step(self, batch, batch_idx, optimizer_idx):
 
@@ -196,7 +195,7 @@ class GanoliGAN(pl.LightningModule):
 
     def configure_optimizers(self):
 
-        lr = self.hypers.get('lr', 0.0002)
+        lr = self.hparams.get('lr', 0.0002)
 
         generator_rna2atac_opt = torch.optim.Adam(self.generator_rna2atac.parameters(), lr=lr, betas=[0.5, 0.999])
         generator_atac2rna_opt = torch.optim.Adam(self.generator_atac2rna.parameters(), lr=lr, betas=[0.5, 0.999])
@@ -394,7 +393,7 @@ class GanoliShallowLogisticPCAGAN(GanoliGAN):
         discriminator_atac = GanoliShallowDiscriminator(pca_n_components, input_modality='atac', hidden_dim=hidden_dim,
                                                         bias=bias, embedding=atac_embedding)
         self.save_hyperparameters('hidden_dim', 'pca_n_components')
-        super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac, hypers=hypers)
+        super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
 
 class GanoliMLPGenerator(GanoliGAN):
 
