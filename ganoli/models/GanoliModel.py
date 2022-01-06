@@ -369,8 +369,6 @@ class GanoliShallowGAN(GanoliGAN):
         discriminator_atac = GanoliShallowDiscriminator(atac_shape, input_modality='atac', hidden_dim=hidden_dim,
                                                         bias=bias, embedding=atac_embedding)
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
-        
-        
 
 
 class GanoliPCAGAN(GanoliGAN):
@@ -386,7 +384,7 @@ class GanoliPCAGAN(GanoliGAN):
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac)
         
 class GanoliShallowLogisticPCAGAN(GanoliGAN):
-    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True, rna_embedding=None, atac_embedding=None, rna_embedding_labels=None, pca_n_components=20, hypers={}):
+    def __init__(self, rna_shape, atac_shape, hidden_dim=500, bias=True, rna_embedding=None, atac_embedding=None, rna_embedding_labels=None, pca_n_components=20):
         generator_rna2atac = GanoliShallowLogisticGenerator(pca_n_components, atac_shape, input_modality='rna', hidden_dim=hidden_dim,
                                                     bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
         generator_atac2rna = GanoliShallowGenerator(pca_n_components, rna_shape, input_modality='atac', hidden_dim=hidden_dim,
@@ -395,7 +393,7 @@ class GanoliShallowLogisticPCAGAN(GanoliGAN):
                                                        bias=bias, embedding=rna_embedding, embedding_labels=rna_embedding_labels)
         discriminator_atac = GanoliShallowDiscriminator(pca_n_components, input_modality='atac', hidden_dim=hidden_dim,
                                                         bias=bias, embedding=atac_embedding)
-        hypers['pca_n_components'] = pca_n_components
+        self.save_hyperparameters('hidden_dim', 'pca_n_components')
         super().__init__(generator_rna2atac, generator_atac2rna, discriminator_rna, discriminator_atac, hypers=hypers)
 
 class GanoliMLPGenerator(GanoliGAN):
