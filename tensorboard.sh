@@ -10,5 +10,5 @@
 
 source ~/.bashrc
 conda activate ganoli
-tensorboard --logdir=/om2/user/rogerjin/GANOLI/ganoli/models/logs --bind_all
+tensorboard --logdir=/om2/user/rogerjin/GANOLI/ganoli/models/logs/newdebug --bind_all
 
