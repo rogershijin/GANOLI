@@ -4,3 +4,7 @@ test/
 linear/
 .ipynb_checkpoints/
 oracle/
+scicar_rna.h5ad
+scicar_atac.h5ad
+rna.h5ad
+snareseq_rna.h5ad
