@@ -413,22 +413,23 @@ class GanoliMLPGenerator(GanoliGAN):
 
 
 if __name__ == '__main__':
-    data_root = '/om2/user/rogerjin/data/Ben'
-    data_path = opj(data_root, 'data_files_new.npz')
-    data = np.load(data_path, allow_pickle=True)
+    # data_root = '/om2/user/rogerjin/data/Ben'
+    # data_path = opj(data_root, 'data_files_new.npz')
+    # data = np.load(data_path, allow_pickle=True)
+
     # gene_list = pd.read_csv(f'{data_root}/gene_list.csv', header=None)
     # chosen_genes = gene_list[data['rna_good_feats']]
     # gene_labels = list(chosen_genes[1])
 
-#     data_dir='/om2/user/rogerjin/data/NeurIPS2021/phase2/predict_modality'
-#     rna_dir=f'{data_dir}/openproblems_bmmc_multiome_phase2_rna'
-#     atac_dir=f'{data_dir}/openproblems_bmmc_multiome_phase2_mod2'
+    data_dir='/om2/user/rogerjin/data/NeurIPS2021/phase2/predict_modality'
+    rna_dir=f'{data_dir}/openproblems_bmmc_multiome_phase2_rna'
+    atac_dir=f'{data_dir}/openproblems_bmmc_multiome_phase2_mod2'
 
-#     rna = ad.read_h5ad(f'{rna_dir}/openproblems_bmmc_multiome_phase2_rna.censor_dataset.output_train_mod1.h5ad')
-#     atac = ad.read_h5ad(f'{rna_dir}/openproblems_bmmc_multiome_phase2_rna.censor_dataset.output_train_mod2.h5ad')
+    rna = ad.read_h5ad(f'{rna_dir}/openproblems_bmmc_multiome_phase2_rna.censor_dataset.output_train_mod1.h5ad')
+    atac = ad.read_h5ad(f'{rna_dir}/openproblems_bmmc_multiome_phase2_rna.censor_dataset.output_train_mod2.h5ad')
 
-#     train_rna, val_rna, train_atac, val_atac = train_test_split(rna, atac, test_size=0.2, random_state=42)
-#     train_rna, val_rna, train_atac, val_atac = train_rna.X.toarray(), val_rna.X.toarray(), train_atac.X.toarray(), val_atac.X.toarray()
+    train_rna, val_rna, train_atac, val_atac = train_test_split(rna, atac, test_size=0.2, random_state=42)
+    train_rna, val_rna, train_atac, val_atac = train_rna.X.toarray(), val_rna.X.toarray(), train_atac.X.toarray(), val_atac.X.toarray()
 
     kwargs = {}
     if torch.cuda.is_available():
@@ -455,14 +456,14 @@ if __name__ == '__main__':
 
     checkpointer = ModelCheckpoint(monitor='checkpointer_objective',
             filename='step={step:02d}-epoch={epoch:02d}-val_oracle_rna={checkpointer_objective:.2f}',
-                                   save_top_k=10, auto_insert_metric_name=False)
+                                   save_top_k=1, auto_insert_metric_name=False)
 
     trainer = Trainer(**kwargs, logger=tb_logger, callbacks=[checkpointer], check_val_every_n_epoch=3)
 
-    train_rna = data['rna_train']
-    train_atac = data['atac_train_small']
-    val_rna = data['rna_test']
-    val_atac = data['atac_test_small']
+    # train_rna = data['rna_train']
+    # train_atac = data['atac_train_small']
+    # val_rna = data['rna_test']
+    # val_atac = data['atac_test_small']
 
     def self_correlation(matrix, device='cuda:0'):
         matrix = torch.Tensor(matrix).to(device)
@@ -499,7 +500,7 @@ if __name__ == '__main__':
     val_atac = GanoliUnimodalDataset(val_atac)
     val_rna_atac = GanoliMultimodalDataset(rna=val_rna, atac=val_atac)
 
-    batch_size = 32
+    batch_size = 1
     train_dataloader = DataLoader(train_rna_atac, batch_size=batch_size, num_workers=4)
     val_dataloader = DataLoader(val_rna_atac, batch_size=batch_size, num_workers=4)
 
@@ -511,6 +512,7 @@ if __name__ == '__main__':
     # gan = GanoliLogisticGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding)
     # gan = GanoliShallowGAN(7445, 3808, rna_embedding=rna_embedding, atac_embedding=atac_embedding, rna_embedding_labels=gene_labels)
 
-    gan = GanoliShallowLogisticPCAGAN(rna_dim, atac_dim, rna_embedding=rna_embedding, atac_embedding=atac_embedding, pca_n_components=n_components)
+    gan = GanoliLinearGAN(rna_dim, atac_dim, rna_embedding=rna_embedding, atac_embedding=atac_embedding, pca_n_components=n_components)
+    # gan = GanoliShallowLogisticPCAGAN(rna_dim, atac_dim, rna_embedding=rna_embedding, atac_embedding=atac_embedding, pca_n_components=n_components)
 
     trainer.fit(gan, train_dataloader, val_dataloader)
