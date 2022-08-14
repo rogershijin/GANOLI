@@ -8,3 +8,4 @@ __pycache__/
 logs/
 data/
 *.csv
+.virtual_documents/
