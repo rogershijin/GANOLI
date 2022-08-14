@@ -1,4 +1,5 @@
 import torch
+from torch.profiler import profile, record_function, ProfilerActivity
 
 def add_pad_embedding(embeddings):
     return torch.cat([embeddings, torch.zeros(1, embeddings.shape[1])])
@@ -31,44 +32,47 @@ def squish_and_embed(seq, embeddings):
     return embeddings(nonzeros.long()) * nonzeros.unsqueeze(-1)
 
 if __name__ == '__main__':
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    print(f"using device '{device}'")
+    with profile(activites=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True) as prof:
+        with record_function("all"):
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            print(f"using device '{device}'")
 
-    seq = torch.Tensor([
-    [0, 1, 0, 10, 100],
-    [1, 0, 0, 10, 0]
-])
+            seq = torch.Tensor([
+            [0, 1, 0, 10, 100],
+            [1, 0, 0, 10, 0]
+        ])
 
-    embeddings = torch.Tensor([
-        [0, 1, 1,],
-        [2, 3, 3],
-        [4, 5, 5],
-        [6, 7, 7],
-        [8 ,9, 9],
-    ])
+            embeddings = torch.Tensor([
+                [0, 1, 1,],
+                [2, 3, 3],
+                [4, 5, 5],
+                [6, 7, 7],
+                [8 ,9, 9],
+            ])
 
-    seq.to(device)
-    embeddings.to(device)
+            seq.to(device)
+            embeddings.to(device)
 
-    embeddings = add_pad_embedding(embeddings)
-    embeddings = torch.nn.Embedding.from_pretrained(embeddings, freeze=False, padding_idx=-1)
+            embeddings = add_pad_embedding(embeddings)
+            embeddings = torch.nn.Embedding.from_pretrained(embeddings, freeze=False, padding_idx=-1)
 
-    nonzero_ans = torch.Tensor([[ 1.,  3.,  4., -1., -1.],
-            [ 0.,  3., -1., -1., -1.]])
-    squish_and_embed_ans = torch.Tensor([[[ 2.,  3.,  3.],
-             [18., 21., 21.],
-             [32., 36., 36.],
-             [ 0.,  0.,  0.],
-             [ 0.,  0.,  0.]],
+            nonzero_ans = torch.Tensor([[ 1.,  3.,  4., -1., -1.],
+                    [ 0.,  3., -1., -1., -1.]])
+            squish_and_embed_ans = torch.Tensor([[[ 2.,  3.,  3.],
+                     [18., 21., 21.],
+                     [32., 36., 36.],
+                     [ 0.,  0.,  0.],
+                     [ 0.,  0.,  0.]],
 
-            [[ 0.,  0.,  0.],
-             [18., 21., 21.],
-             [ 0.,  0.,  0.],
-             [ 0.,  0.,  0.],
-             [ 0.,  0.,  0.]]])
+                    [[ 0.,  0.,  0.],
+                     [18., 21., 21.],
+                     [ 0.,  0.,  0.],
+                     [ 0.,  0.,  0.],
+                     [ 0.,  0.,  0.]]])
 
-    assert torch.equal(select_nonzero(seq), nonzero_ans)
-    assert torch.equal(squish_and_embed(seq, embeddings), squish_and_embed_ans)
+            assert torch.equal(select_nonzero(seq), nonzero_ans)
+            assert torch.equal(squish_and_embed(seq, embeddings), squish_and_embed_ans)
 
-    print("all tests passed")
+            print("all tests passed")
 
+    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
