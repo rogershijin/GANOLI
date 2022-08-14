@@ -19,7 +19,7 @@ def pad(vec, seq_len, pad_token=-1):
 def select_nonzero(seq, pad_token=-1):
     seqs = []
     for row in seq:
-        nonzeros = pad(row.nonzero().T[0], seq.shape[-1], pad_token)
+        nonzeros = pad(row.nonzero(as_tuple=False).T[0], seq.shape[-1], pad_token)
         seqs.append(nonzeros)
     return torch.stack(seqs)
 
@@ -46,6 +46,23 @@ if __name__ == '__main__':
 
     embeddings = add_pad_embedding(embeddings)
     embeddings = torch.nn.Embedding.from_pretrained(embeddings, freeze=False, padding_idx=-1)
-    print(embeddings)
-    print(select_nonzero(seq))
-    print(squish_and_embed(seq, embeddings))
+
+    nonzero_ans = torch.Tensor([[ 1.,  3.,  4., -1., -1.],
+            [ 0.,  3., -1., -1., -1.]])
+    squish_and_embed_ans = torch.Tensor([[[ 2.,  3.,  3.],
+             [18., 21., 21.],
+             [32., 36., 36.],
+             [ 0.,  0.,  0.],
+             [ 0.,  0.,  0.]],
+
+            [[ 0.,  0.,  0.],
+             [18., 21., 21.],
+             [ 0.,  0.,  0.],
+             [ 0.,  0.,  0.],
+             [ 0.,  0.,  0.]]])
+
+    assert torch.equal(select_nonzero(seq), nonzero_ans)
+    assert torch.equal(squish_and_embed(seq, embeddings), squish_and_embed_ans)
+
+    print("all tests passed")
+

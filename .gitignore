@@ -9,3 +9,4 @@ logs/
 data/
 *.csv
 .virtual_documents/
+.vscode/
