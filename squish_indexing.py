@@ -31,6 +31,9 @@ def squish_and_embed(seq, embeddings):
     return embeddings(nonzeros.long()) * nonzeros.unsqueeze(-1)
 
 if __name__ == '__main__':
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    print(f"using device '{device}'")
+
     seq = torch.Tensor([
     [0, 1, 0, 10, 100],
     [1, 0, 0, 10, 0]
@@ -43,6 +46,9 @@ if __name__ == '__main__':
         [6, 7, 7],
         [8 ,9, 9],
     ])
+
+    seq.to(device)
+    embeddings.to(device)
 
     embeddings = add_pad_embedding(embeddings)
     embeddings = torch.nn.Embedding.from_pretrained(embeddings, freeze=False, padding_idx=-1)
