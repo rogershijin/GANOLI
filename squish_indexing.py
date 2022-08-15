@@ -1,6 +1,5 @@
 import torch
 import torch.jit as jit
-from torch.profiler import profile, record_function, ProfilerActivity
 
 def add_pad_embedding(embeddings):
     return torch.cat([embeddings, torch.zeros(1, embeddings.shape[1])])
@@ -48,6 +47,8 @@ def squish_and_embed(seq, embeddings):
     return embeddings(nonzero_indices.long()) * nonzero_seq.unsqueeze(-1)
 
 if __name__ == '__main__':
+    from torch.profiler import profile, record_function, ProfilerActivity
+    
     with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True) as prof:
         with record_function("all"):
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
