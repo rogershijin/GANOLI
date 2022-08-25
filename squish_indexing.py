@@ -65,6 +65,7 @@ if __name__ == '__main__':
                 [4, 5, 5],
                 [6, 7, 7],
                 [8 ,9, 9],
+                [0, 0, 0],
             ])
 
             seq.to(device)
@@ -73,17 +74,18 @@ if __name__ == '__main__':
             embeddings = add_pad_embedding(embeddings)
             embeddings = torch.nn.Embedding.from_pretrained(embeddings, freeze=False, padding_idx=-1)
 
-            nonzero_ans = torch.tensor([[ 1,  3,  4],
-                                        [ 0,  3, 5]])
-            squish_and_embed_ans = torch.tensor( [[[  0.,   1.,   1.],
-                                             [ 20.,  30.,  30.],
-                                             [400., 500., 500.]],
-
-                                            [[  0.,   1.,   1.],
-                                             [ 20.,  30.,  30.],
-                                             [  0.,   0.,   0.]]])
+            nonzero_ans = torch.tensor([[ 1, 3, 4],
+                                        [ 0, 3, 5]]) # 5 is padding token
+            
+            squish_and_embed_ans = torch.tensor( [[[  2.,   3.,   3.],
+                                                   [ 60.,  70.,  70.],
+                                                   [800., 900., 900.]],
+                                                  
+                                                  [[  0.,   1.,   1.],
+                                                   [ 60.,  70.,  70.],
+                                                   [  0.,   0.,   0.]]])
             try:
-                indices, seq = select_nonzero(seq)
+                indices, nonzero_seq = select_nonzero(seq)
                 assert torch.equal(indices, nonzero_ans)
             except:
                 print("error in nonzero selection")
