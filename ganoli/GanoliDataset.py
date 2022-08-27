@@ -26,4 +26,3 @@ class GanoliMultimodalDataset(Dataset):
 
     def __len__(self):
         return self._len
-
