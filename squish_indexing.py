@@ -4,7 +4,6 @@ import scipy.sparse
 
 DEFAULT_ARANGE_LEN = 10
 COUNT_PAD_TOKEN = 0
-BATCH_SIZE = 8
 
 
 def add_pad_embedding(embeddings):
@@ -73,7 +72,7 @@ def index_and_pad(indices, data, pad_token):
 
 
 def _squish_and_embed_sparse(
-    batch_coo, embedding, batch_size=BATCH_SIZE, index_pad_token="last"
+    batch_coo, embedding, index_pad_token="last"
 ):
     '''
     batch_coo: sparse matrix in coo format. batch_coo.row must be sorted. this can be accomplished by calling batch_coo.to_csr().to_csc()
@@ -82,7 +81,7 @@ def _squish_and_embed_sparse(
         index_pad_token = embedding.num_embeddings - 1
     rows = torch.tensor(batch_coo.row)
     _, num_nonzeros = torch.unique_consecutive(rows, return_counts=True)
-    assert _.shape[0] == batch_size  # otherwise there's an all-0 sequence in the batch
+    assert _.shape[0] == batch_coo.shape[0]  # otherwise there's an all-0 sequence in the batch
     sparse_indices = torch.stack([rows, cyclic_arange(num_nonzeros)])
     squish_indices = index_and_pad(
         sparse_indices, batch_coo.col, index_pad_token
@@ -99,9 +98,9 @@ def _squish_and_embed_sparse(
     }
 
 
-def squish_and_embed(batch, embeddings, batch_size=BATCH_SIZE):
+def squish_and_embed(batch, embeddings):
     if scipy.sparse.issparse(batch):
-        return _squish_and_embed_sparse(batch, embeddings, batch_size=batch_size)
+        return _squish_and_embed_sparse(batch, embeddings)
     nonzero_indices, nonzero_seq = select_nonzero(
         batch, pad_token=num_embeddings(embeddings)
     )
@@ -160,7 +159,7 @@ if __name__ == "__main__":
             except Exception as e:
                 print("failed at least one dense case")
             try:
-                out = squish_and_embed(sparse_seq, embeddings, batch_size=2)
+                out = squish_and_embed(sparse_seq, embeddings)
                 assert torch.equal(out["indices"], nonzero_ans)
                 assert torch.equal(out["embeddings"], squish_and_embed_ans)
                 print("passed sparse cases")
