@@ -10,3 +10,4 @@ data/
 *.csv
 .virtual_documents/
 .vscode/
+wandb/
