@@ -12,12 +12,13 @@ from squish_indexing import squish_and_embed
 from torch.nn import MSELoss
 from transformers import AdamW
 import math
+import argparse
+import json
 from time import perf_counter
 
 
 remote_atac_dir = '/om2/user/rogerjin/data/NeurIPS2021/multiome/atac'
 remote_rna_dir = '/om2/user/rogerjin/data/NeurIPS2021/multiome/rna'
-os.makedirs(remote_rna_dir, exist_ok=True)
 remote_atac_path = '/om2/user/rogerjin/data/NeurIPS2021/multiome/multiome_atac_processed_training.h5ad'
 remote_rna_path = '/om2/user/rogerjin/data/NeurIPS2021/multiome/multiome_gex_processed_training.h5ad'
 cache_dir="/om2/user/rogerjin/.cache"
@@ -28,14 +29,13 @@ try:
 except:
     pass
 
-config = {
-    'batch_size': 32,
-    'lr': 5e-4,
-    'max_seq_len': 1600,
-    'epochs': 100,
-}
+parser = argparse.ArgumentParser()
+parser.add_argument('--config')
+args = parser.parse_args()
+config_path = args.config
+config = json.load(open(config_path))
 
-wandb.init(project="Squish Transformer", entity="rogershijin", reinit=True, config=config)
+wandb.init(project="Squish Transformer", entity="rogershijin", config=config, name=config.get('run_name', None))
 checkpoint_dir = f'/om2/user/rogerjin/checkpoints/{wandb.run.name}'
 os.makedirs(checkpoint_dir)
 wandb.config.update({'checkpoint_dir': checkpoint_dir})
