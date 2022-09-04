@@ -1,0 +1,8 @@
+{
+    "run_name": 'binary',
+    "batch_size": 32,
+    "lr": 5e-4,
+    "max_seq_len": 1600,
+    "epochs": 1000,
+    "use_binary": True,
+}

@@ -79,6 +79,7 @@ def _squish_and_embed_sparse(
     '''
     if index_pad_token == "last":
         index_pad_token = embedding.num_embeddings - 1
+    cls_token = embedding.num_embeddings - 2
     rows = torch.tensor(batch_coo.row)
     _, num_nonzeros = torch.unique_consecutive(rows, return_counts=True)
     assert _.shape[0] == batch_coo.shape[0]  # otherwise there's an all-0 sequence in the batch
@@ -87,7 +88,11 @@ def _squish_and_embed_sparse(
         sparse_indices, batch_coo.col, index_pad_token
     ).long()
     counts = index_and_pad(sparse_indices, batch_coo.data, COUNT_PAD_TOKEN)
-    squish_indices, counts = squish_indices[:, :max_seq_len].to('cuda:0'), counts[:, :max_seq_len].to('cuda:0')
+    squish_indices, counts = squish_indices[:, :max_seq_len-1].to('cuda:0'), counts[:, :max_seq_len-1].to('cuda:0')
+    counts_cls = torch.ones(counts.shape[0], 1).to('cuda:0') # bs x 1
+    squish_cls = torch.full((squish_indices.shape[0], 1), cls_token).to('cuda:0') # bs x 1
+    counts = torch.hstack([counts_cls, counts])
+    squish_indices = torch.hstack([squish_cls, squish_indices])
     embeddings = embedding(squish_indices) * counts.unsqueeze(-1)
     return {
         "indices": squish_indices,

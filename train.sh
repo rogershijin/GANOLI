@@ -13,4 +13,4 @@
 source ~/.bashrc
 conda activate ganoli
 cd /om2/user/rogerjin/GANOLI
-python train.py
+python train.py --config=configs/binary.json

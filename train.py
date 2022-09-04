@@ -10,7 +10,7 @@ import pprint
 import os
 from squish_indexing import squish_and_embed
 from torch.nn import MSELoss
-from transformers import AdamW
+from torch.optim import AdamW
 import math
 import argparse
 import json
@@ -105,8 +105,11 @@ model.to(device)
 loss_fn = MSELoss()
 optimizer = AdamW(model.parameters(), lr=config['lr'])
 
-def forward_pass(batch):
-    atac = batch.mod['atac'].layers['counts'].tocsr().tocoo()
+def forward_pass(batch, use_binary=config.get('use_binary', False)):
+    if use_binary:
+        atac = batch.mod['atac'].X.tocsr().tocoo()
+    else:
+        atac = batch.mod['atac'].layers['counts'].tocsr().tocoo()
     squished = squish_and_embed(atac, model.distilbert.embeddings.word_embeddings, max_seq_len=config['max_seq_len'])
     out = model(inputs_embeds=squished['embeddings'], attention_mask=squished['attention_mask'])
     return out
@@ -138,7 +141,7 @@ val_start = perf_counter()
 for batch in loaders['val']:
     val_loss += eval_batch(batch)
 val_end = perf_counter()
-print(f'val_loss={val_loss:.5f} time={(val_end - val_start)/3600:.5f}')
+print(f'val_loss={val_loss:.5f} time={(val_end - val_start)/60:.5f}')
 print(f'INITIAL VALIDATION COMPLETE\n')
     
 best_val_loss = val_loss
@@ -148,7 +151,7 @@ wandb.log({
     'epoch': 0,
     'val/loss': val_loss,
     'val/best_loss': best_val_loss,
-    'val/time': (val_end - val_start)/3600
+    'val/time': (val_end - val_start)/60
 })
 
 print(f'STARTING TRAINING...')
@@ -200,15 +203,15 @@ for epoch in range(1, config['epochs']+1):
         'train/loss': train_loss, 
         'train/best_loss': best_train_loss,
         'train/best_loss_epoch': best_train_loss_epoch,
-        'train/time': (train_end - train_start)/3600,
+        'train/time': (train_end - train_start)/60,
         'val/loss': val_loss,
         'val/best_loss': best_val_loss,
         'val/best_loss_epoch': best_val_loss_epoch,
-        'val/time': (val_end - val_start)/3600,
+        'val/time': (val_end - val_start)/60,
         'best_checkpoint_path': best_checkpoint_path,
     })
     
-    print(f'Epoch {epoch}/{config["epochs"]}: train_loss={train_loss:.5f} best_train_loss={best_train_loss:.5f} best_train_loss_epoch={best_train_loss_epoch} val_loss={val_loss:.5f} best_val_loss={best_val_loss:.5f} best_val_loss_epoch={best_val_loss_epoch} time={(val_end-train_start)/3600:.5f}')
+    print(f'Epoch {epoch}/{config["epochs"]}: train_loss={train_loss:.5f} best_train_loss={best_train_loss:.5f} best_train_loss_epoch={best_train_loss_epoch} val_loss={val_loss:.5f} best_val_loss={best_val_loss:.5f} best_val_loss_epoch={best_val_loss_epoch} time={(val_end-train_start)/60:.5f}')
     
 test_loss = 0
 test_start = perf_counter()
@@ -219,10 +222,12 @@ test_end = perf_counter()
 wandb.log({
     'epoch': epoch,
     'test/loss': test_loss,
-    'test/time': (test_end-test_start)/3600
+    'test/time': (test_end-test_start)/60
 })
 print('TRAINING COMPLETE\n')
 
 print('STARTING TESTING...')
-print(f'test_loss={test_loss:.5f} time={(test_end-test_start)/3600:.5f}')
+print(f'test_loss={test_loss:.5f} time={(test_end-test_start)/60:.5f}')
 print('TESTING COMPLETE')
+
+wandb.finish()
