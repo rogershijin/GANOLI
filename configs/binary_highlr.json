@@ -1,8 +1,8 @@
 {
-    "run_name": "binary",
+    "run_name": "binary_highlr",
     "batch_size": 32,
-    "lr": 5e-4,
+    "lr": 1.0e-3,
     "max_seq_len": 1600,
-    "epochs": 1000,
+    "epochs": 100,
     "use_binary": true
 }

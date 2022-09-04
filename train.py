@@ -37,7 +37,7 @@ config = json.load(open(config_path))
 
 wandb.init(project="Squish Transformer", entity="rogershijin", config=config, name=config.get('run_name', None))
 checkpoint_dir = f'/om2/user/rogerjin/checkpoints/{wandb.run.name}'
-os.makedirs(checkpoint_dir)
+os.makedirs(checkpoint_dir, exist_ok=True)
 wandb.config.update({'checkpoint_dir': checkpoint_dir})
 pprint.pprint(dict(wandb.config), indent=2)
 
@@ -78,7 +78,7 @@ samplers = {
 # todo: increase val/test batch size
 
 loaders = {
-    partition: DataLoader(dataset, sampler=BatchSampler(samplers[partition](dataset), batch_size=config['batch_size'], drop_last=False ), collate_fn=lambda x: x[0]) for partition, dataset in datasets.items()
+    partition: DataLoader(dataset, sampler=BatchSampler(samplers[partition](dataset), batch_size=config['batch_size'], drop_last=False, num_workers=8 ), collate_fn=lambda x: x[0]) for partition, dataset in datasets.items()
 }
 
 class SquishTransformer(torch.nn.Module):

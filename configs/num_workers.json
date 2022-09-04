@@ -1,5 +1,5 @@
 {
-    "run_name": "default",
+    "run_name": "num_workers",
     "batch_size": 32,
     "lr": 5e-4,
     "max_seq_len": 1600,
