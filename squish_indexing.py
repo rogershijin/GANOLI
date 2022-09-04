@@ -72,7 +72,7 @@ def index_and_pad(indices, data, pad_token):
 
 
 def _squish_and_embed_sparse(
-    batch_coo, embedding, index_pad_token="last"
+    batch_coo, embedding, max_seq_len=512, index_pad_token="last"
 ):
     '''
     batch_coo: sparse matrix in coo format. batch_coo.row must be sorted. this can be accomplished by calling batch_coo.to_csr().to_csc()
@@ -87,8 +87,7 @@ def _squish_and_embed_sparse(
         sparse_indices, batch_coo.col, index_pad_token
     ).long()
     counts = index_and_pad(sparse_indices, batch_coo.data, COUNT_PAD_TOKEN)
-    squish_indices = squish_indices.to('cuda:0')
-    counts = counts.to('cuda:0')
+    squish_indices, counts = squish_indices[:, :max_seq_len].to('cuda:0'), counts[:, :max_seq_len].to('cuda:0')
     embeddings = embedding(squish_indices) * counts.unsqueeze(-1)
     return {
         "indices": squish_indices,
@@ -98,12 +97,13 @@ def _squish_and_embed_sparse(
     }
 
 
-def squish_and_embed(batch, embeddings):
+def squish_and_embed(batch, embeddings, max_seq_len=512):
     if scipy.sparse.issparse(batch):
-        return _squish_and_embed_sparse(batch, embeddings)
+        return _squish_and_embed_sparse(batch, embeddings, max_seq_len=max_seq_len)
     nonzero_indices, nonzero_seq = select_nonzero(
-        batch, pad_token=num_embeddings(embeddings)
+        batch, pad_token=num_embeddings(embeddings), max_seq_len=max_seq_len
     )
+    nonzero_indices, nonzero_seq = nonzero_indices[:, :max_seq_len], nonzero_seq[:, :max_seq_len]
     return {
         "indices": nonzero_indices,
         "counts": nonzero_seq,
