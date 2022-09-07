@@ -1,7 +1,7 @@
 {
-    "run_name": "num_workers_cls_lowlr",
+    "run_name": "cls_counts_relu",
     "batch_size": 32,
-    "lr": 1.0e-5,
+    "lr": 5e-4,
     "max_seq_len": 1600,
     "epochs": 1000
 }

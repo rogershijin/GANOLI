@@ -1,0 +1,7 @@
+{
+    "run_name": "cls_counts",
+    "batch_size": 1,
+    "lr": 5e-4,
+    "max_seq_len": 9663,
+    "epochs": 10
+}

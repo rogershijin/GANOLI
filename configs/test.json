@@ -1,0 +1,7 @@
+{
+    "run_name": "num_workers_test",
+    "batch_size": 8,
+    "lr": 1.0e-5,
+    "max_seq_len": 10,
+    "epochs": 1
+}

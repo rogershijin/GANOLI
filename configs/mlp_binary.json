@@ -1,0 +1,9 @@
+{
+    "run_name": "MLP binary",
+    "model": "MLP",
+    "batch_size": 32,
+    "lr": 1.0e-5,
+    "max_seq_len": 10,
+    "epochs": 100,
+    "use_binary": true
+}

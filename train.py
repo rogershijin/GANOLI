@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, BatchSampler, SequentialSampler, RandomSampler
-from transformers import DistilBertModel, DistilBertConfig
-from torch.nn import Linear
+from SquishTransformer import SquishTransformer
+from MLP import MLP
 import numpy as np
 import scanpy as sc
 from muon import MuData
@@ -42,10 +42,16 @@ wandb.config.update({'checkpoint_dir': checkpoint_dir})
 pprint.pprint(dict(wandb.config), indent=2)
 
 
+# atac = {
+#     'train': sc.read_h5ad(f'{remote_atac_dir}/atac_train_sorted_decreasing_variance.h5ad'),
+#     'val': sc.read_h5ad(f'{remote_atac_dir}/atac_val_sorted_decreasing_variance.h5ad'),
+#     'test': sc.read_h5ad(f'{remote_atac_dir}/atac_test_sorted_decreasing_variance.h5ad')
+# }
+
 atac = {
-    'train': sc.read_h5ad(f'{remote_atac_dir}/atac_train_sorted_decreasing_variance.h5ad'),
-    'val': sc.read_h5ad(f'{remote_atac_dir}/atac_val_sorted_decreasing_variance.h5ad'),
-    'test': sc.read_h5ad(f'{remote_atac_dir}/atac_test_sorted_decreasing_variance.h5ad')
+    'train': sc.read_h5ad(f'{remote_atac_dir}/atac_train.h5ad'),
+    'val': sc.read_h5ad(f'{remote_atac_dir}/atac_val.h5ad'),
+    'test': sc.read_h5ad(f'{remote_atac_dir}/atac_test.h5ad')
 }
 
 rna = {
@@ -54,14 +60,15 @@ rna = {
     'test': sc.read_h5ad(f'{remote_rna_dir}/rna_test.h5ad')
 }
 
+MODELS = {
+    'squish_transformer': SquishTransformer,
+    'mlp': MLP,
+}
+
 class MuDataWithLen(MuData):
     
     def __len__(self):
-        try:
-            return self._len
-        except:
-            self._len = min(len(mod) for mod in self.mod.values())
-            return self._len
+        return self.n_obs
 
 datasets = {
     partition: MuDataWithLen({'atac': atac[partition], 'rna': rna[partition]}) for partition in atac.keys()
@@ -75,29 +82,20 @@ samplers = {
     'test': SequentialSampler
 }
 
+def collate_fn(x):
+    return x[0]
+
 # todo: increase val/test batch size
 
+# todo: debug num_workers>0 problem
 loaders = {
-    partition: DataLoader(dataset, sampler=BatchSampler(samplers[partition](dataset), batch_size=config['batch_size'], drop_last=False, num_workers=8 ), collate_fn=lambda x: x[0]) for partition, dataset in datasets.items()
+    partition: DataLoader(dataset, sampler=BatchSampler(samplers[partition](dataset), batch_size=config['batch_size'], drop_last=False), num_workers=0, collate_fn=collate_fn) for partition, dataset in datasets.items()
 }
 
-class SquishTransformer(torch.nn.Module):
-    
-    def __init__(self, output_dim=13431):
-        super().__init__()
-        self.output_dim = output_dim
-        self.distilbert = DistilBertModel.from_pretrained('distilbert-base-uncased', cache_dir=cache_dir)
-        self.distilbert.embeddings.word_embeddings = torch.nn.Embedding(116491, 768) # todo: magic numbers
-        self.pre_classifier = Linear(self.distilbert.config.dim, self.distilbert.config.dim)
-        self.classifier = Linear(self.distilbert.config.dim, output_dim)
-        
-    def forward(self, **kwargs):
-        out = self.distilbert(**kwargs).last_hidden_state[:, 0] # embedding of cls
-        out = self.pre_classifier(out)
-        out = self.classifier(out)
-        return out
-
-model = SquishTransformer()
+model_name = config.get('model', 'squish_transformer').lower()
+model_class = MODELS[model_name]
+model_kwargs = config.get('model_kwargs', {})
+model = model_class(**model_kwargs)
 # device = 'cpu'
 device = 'cuda:0'
 model.to(device)
@@ -110,7 +108,14 @@ def forward_pass(batch, use_binary=config.get('use_binary', False)):
         atac = batch.mod['atac'].X.tocsr().tocoo()
     else:
         atac = batch.mod['atac'].layers['counts'].tocsr().tocoo()
-    squished = squish_and_embed(atac, model.distilbert.embeddings.word_embeddings, max_seq_len=config['max_seq_len'])
+    if model_name == 'mlp':
+        atac = torch.tensor(atac.todense(), dtype=torch.float).to(device)
+        return model(atac)
+    if model_kwargs.get('transformer', '') == 'google/long-t5-local-base':
+        model_embeddings = model.transformer.embed_tokens
+    else:
+        model_embeddings = model.transformer.embeddings.word_embeddings
+    squished = squish_and_embed(atac, model_embeddings, max_seq_len=config['max_seq_len'])
     out = model(inputs_embeds=squished['embeddings'], attention_mask=squished['attention_mask'])
     return out
     
@@ -139,7 +144,8 @@ print(f'STARTING INITIAL VALIDATION...')
 val_loss = 0
 val_start = perf_counter()
 for batch in loaders['val']:
-    val_loss += eval_batch(batch)
+    val_loss += batch.n_obs * eval_batch(batch) / len(datasets['val'])
+    break
 val_end = perf_counter()
 print(f'val_loss={val_loss:.5f} time={(val_end - val_start)/60:.5f}')
 print(f'INITIAL VALIDATION COMPLETE\n')
@@ -161,12 +167,12 @@ for epoch in range(1, config['epochs']+1):
     
     train_start = perf_counter()
     for batch in loaders['train']:
-        train_loss += train_step(batch)
+        train_loss += batch.n_obs * train_step(batch) / len(datasets['train'])
     train_end = perf_counter()
         
     val_start = perf_counter()
     for batch in loaders['val']:
-        val_loss += eval_batch(batch)
+        val_loss += batch.n_obs * eval_batch(batch) / len(datasets['val'])
     val_end = perf_counter()
         
     if train_loss < best_train_loss:
@@ -216,7 +222,7 @@ for epoch in range(1, config['epochs']+1):
 test_loss = 0
 test_start = perf_counter()
 for batch in loaders['test']:
-    test_loss += eval_batch(batch)
+    test_loss += batch.n_obs * eval_batch(batch) / len(datasets['test'])
 test_end = perf_counter()
     
 wandb.log({

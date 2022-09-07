@@ -1,0 +1,10 @@
+{
+    "run_name": "long-t5",
+    "batch_size": 2,
+    "lr": 5e-4,
+    "max_seq_len": 9663,
+    "epochs": 10,
+    "model_kwargs": {
+        "transformer": "google/long-t5-local-base"
+    }
+}
