@@ -147,7 +147,6 @@ val_loss = 0
 val_start = perf_counter()
 for batch in loaders['val']:
     val_loss += batch.n_obs * eval_batch(batch) / len(datasets['val'])
-    break
 val_end = perf_counter()
 print(f'val_loss={val_loss:.5f} time={(val_end - val_start)/60:.5f}')
 print(f'INITIAL VALIDATION COMPLETE\n')
