@@ -16,13 +16,6 @@ import argparse
 import json
 from time import perf_counter
 
-
-remote_atac_dir = '/om2/user/rogerjin/data/NeurIPS2021/multiome/atac'
-remote_rna_dir = '/om2/user/rogerjin/data/NeurIPS2021/multiome/rna'
-remote_atac_path = '/om2/user/rogerjin/data/NeurIPS2021/multiome/multiome_atac_processed_training.h5ad'
-remote_rna_path = '/om2/user/rogerjin/data/NeurIPS2021/multiome/multiome_gex_processed_training.h5ad'
-cache_dir="/om2/user/rogerjin/.cache"
-
 # end any ongoing wandb runs
 try:
     wandb.finish()
@@ -36,10 +29,19 @@ config_path = args.config
 config = json.load(open(config_path))
 
 wandb.init(project="Squish Transformer", entity="rogershijin", config=config, name=config.get('run_name', None))
-checkpoint_dir = f'/om2/user/rogerjin/checkpoints/{wandb.run.name}'
+checkpoint_base_dir = config.get('checkpoint_base_dir', '/om2/user/rogerjin/checkpoints')
+checkpoint_dir = f'{checkpoint_base_dir}/{wandb.run.name}'
 os.makedirs(checkpoint_dir, exist_ok=True)
 wandb.config.update({'checkpoint_dir': checkpoint_dir})
 pprint.pprint(dict(wandb.config), indent=2)
+
+remote_data_dir = config.get('data_dir', '/om2/user/rogerjin/data/NeurIPS2021/multiome')
+remote_atac_dir = f'{remote_data_dir}/atac'
+remote_rna_dir = f'{remote_data_dir}/rna'
+remote_atac_path = f'{remote_data_dir}/multiome_atac_processed_training.h5ad'
+remote_rna_path = f'{remote_data_dir}/multiome_gex_processed_training.h5ad'
+cache_dir="/om2/user/rogerjin/.cache"
+
 
 
 # atac = {
